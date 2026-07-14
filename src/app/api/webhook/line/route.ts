@@ -3,6 +3,7 @@ import type { webhook } from "@line/bot-sdk";
 
 import { prisma } from "@/lib/db";
 import { generateAutoReply } from "@/lib/ai/reply";
+import { emitInboxEvent } from "@/lib/inbox/bus";
 import { getProfile, replyText, verifyLineSignature } from "@/lib/line/client";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,7 @@ async function handleEvent(event: webhook.Event) {
     where: { id: conversation.id },
     data: { updatedAt: new Date() },
   });
+  emitInboxEvent({ type: "message", conversationId: conversation.id });
 
   // Only auto-reply while AI owns the conversation and the message is text.
   if (conversation.status !== "AI_HANDLING") return;
@@ -96,6 +98,7 @@ async function handleEvent(event: webhook.Event) {
         metadata: { reason: result.reason },
       },
     });
+    emitInboxEvent({ type: "message", conversationId: conversation.id });
     if (event.replyToken) {
       await safeReply(event.replyToken, result.answer);
     }
@@ -132,6 +135,7 @@ async function escalate(conversationId: string, reason?: string) {
     where: { id: conversationId },
     data: { status: "HUMAN_HANDLING" },
   });
+  emitInboxEvent({ type: "conversation", conversationId });
   if (reason) {
     console.log(`conversation ${conversationId} escalated: ${reason}`);
   }

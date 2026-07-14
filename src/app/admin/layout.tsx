@@ -42,9 +42,12 @@ export default async function AdminLayout({
           >
             แดชบอร์ด
           </Link>
-          <span className="rounded-md px-3 py-1.5 text-muted-foreground">
-            กล่องข้อความ (เร็ว ๆ นี้)
-          </span>
+          <Link
+            href="/admin/inbox"
+            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+          >
+            กล่องข้อความ
+          </Link>
           <span className="rounded-md px-3 py-1.5 text-muted-foreground">
             ลูกค้ามุ่งหวัง (เร็ว ๆ นี้)
           </span>
