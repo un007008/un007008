@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LeadForm } from "./lead-form";
 import type { ConversationSummary } from "./types";
 
 export function ContactPanel({
@@ -53,6 +54,7 @@ export function ContactPanel({
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
       <h3 className="text-sm font-semibold">ข้อมูลลูกค้า</h3>
+      <LeadForm contactId={contact.id} />
       <div className="space-y-1.5">
         <Label htmlFor="c-name">ชื่อ</Label>
         <Input

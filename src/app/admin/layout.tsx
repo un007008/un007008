@@ -48,9 +48,12 @@ export default async function AdminLayout({
           >
             กล่องข้อความ
           </Link>
-          <span className="rounded-md px-3 py-1.5 text-muted-foreground">
-            ลูกค้ามุ่งหวัง (เร็ว ๆ นี้)
-          </span>
+          <Link
+            href="/admin/leads"
+            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+          >
+            ลูกค้ามุ่งหวัง
+          </Link>
         </nav>
       </header>
       <main className="flex-1 p-4">{children}</main>
