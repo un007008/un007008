@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Enums =====
+
+enum Role {
+  ADMIN
+  SALES
+  CR
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  RENTED
+  HIDDEN
+}
+
+enum ListingType {
+  SALE
+  RENT
+  SALE_AND_RENT
+}
+
+enum PropertyType {
+  CONDO
+  HOUSE
+  TOWNHOUSE
+  COMMERCIAL
+  LAND
+}
+
+enum Channel {
+  LINE
+  MESSENGER
+  WHATSAPP
+  WEBCHAT
+}
+
+enum ConvStatus {
+  AI_HANDLING
+  HUMAN_HANDLING
+  CLOSED
+}
+
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+
+enum SenderType {
+  CUSTOMER
+  AI
+  STAFF
+}
+
+enum LeadSource {
+  CHAT
+  WEBSITE_FORM
+  MANUAL
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  VIEWING_SCHEDULED
+  VIEWED
+  OFFER
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum ApptStatus {
+  SCHEDULED
+  DONE
+  CANCELLED
+  NO_SHOW
+}
+
+enum DealStatus {
+  DRAFT
+  CONTRACT_SENT
+  SIGNED
+  COMPLETED
+  CANCELLED
+}
+
+// ===== Core =====
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // hashed
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+}
+
+// ===== Module 2: Website CMS =====
+
+model Property {
+  id           String          @id @default(cuid())
+  refCode      String          @unique // e.g. PS-00012
+  status       PropertyStatus
+  listingType  ListingType
+  propertyType PropertyType
+  title        Json // {th, en, zh}
+  description  Json // {th, en, zh} + per-language edited flag
+  priceSale    Decimal?
+  priceRent    Decimal? // per month
+  bedrooms     Int?
+  bathrooms    Int?
+  areaSqm      Float?
+  floor        Int?
+  projectName  String?
+  district     String?
+  btsMrt       String?
+  lat          Float?
+  lng          Float?
+  images       PropertyImage[]
+  featured     Boolean         @default(false)
+  slug         String          @unique // SEO URL
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  propertyId String
+  url        String // R2 URL (webp)
+  thumbUrl   String
+  order      Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String
+  thumbUrl  String?
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+}
+
+model SiteConfig {
+  id        String   @id // e.g. "homepage", "seo", "footer"
+  data      Json // sections array per SPEC 4.2
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     Json // {th, en, zh}
+  content   Json // {th, en, zh} markdown
+  coverUrl  String?
+  category  String?
+  tags      String[]
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ===== Module 1: Inbox =====
+
+model Contact {
+  id            String         @id @default(cuid())
+  name          String?
+  phone         String?
+  email         String?
+  lineUserId    String?        @unique
+  note          String?
+  tags          String[]
+  conversations Conversation[]
+  leads         Lead[]
+  createdAt     DateTime       @default(now())
+}
+
+model Conversation {
+  id         String     @id @default(cuid())
+  channel    Channel
+  contactId  String
+  status     ConvStatus
+  assignedTo String? // userId of sales/CR staff
+  messages   Message[]
+  contact    Contact    @relation(fields: [contactId], references: [id])
+  updatedAt  DateTime   @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  direction      Direction
+  sender         SenderType
+  content        String
+  contentType    String       @default("text") // text | image | property_card
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeEntry {
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  category String?
+  active   Boolean @default(true)
+}
+
+// ===== Module 3: CRM =====
+
+model Lead {
+  id           String        @id @default(cuid())
+  contactId    String
+  source       LeadSource
+  stage        LeadStage
+  interest     ListingType?
+  budgetMin    Decimal?
+  budgetMax    Decimal?
+  propertyId   String? // property of interest
+  assignedTo   String?
+  note         String?
+  appointments Appointment[]
+  deal         Deal?
+  contact      Contact       @relation(fields: [contactId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Appointment {
+  id         String     @id @default(cuid())
+  leadId     String
+  propertyId String
+  datetime   DateTime
+  status     ApptStatus
+  note       String?
+  lead       Lead       @relation(fields: [leadId], references: [id])
+}
+
+model Deal {
+  id            String     @id @default(cuid())
+  leadId        String     @unique
+  propertyId    String
+  dealType      ListingType
+  amount        Decimal
+  status        DealStatus
+  contractStart DateTime? // for rentals
+  contractEnd   DateTime? // used for "contract expiring" alerts
+  documents     Document[]
+  lead          Lead       @relation(fields: [leadId], references: [id])
+  createdAt     DateTime   @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  dealId    String
+  name      String
+  url       String // R2
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
