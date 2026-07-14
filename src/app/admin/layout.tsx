@@ -54,6 +54,12 @@ export default async function AdminLayout({
           >
             ลูกค้ามุ่งหวัง
           </Link>
+          <Link
+            href="/admin/knowledge"
+            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+          >
+            คลังความรู้ AI
+          </Link>
         </nav>
       </header>
       <main className="flex-1 p-4">{children}</main>
