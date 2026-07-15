@@ -69,12 +69,26 @@ export default async function AdminLayout({
             </Link>
           )}
           {session.user.role === "ADMIN" && (
-            <Link
-              href="/admin/settings/homepage"
-              className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
-            >
-              หน้าแรกเว็บ
-            </Link>
+            <>
+              <Link
+                href="/admin/settings/homepage"
+                className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+              >
+                หน้าแรกเว็บ
+              </Link>
+              <Link
+                href="/admin/media"
+                className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+              >
+                คลังสื่อ
+              </Link>
+              <Link
+                href="/admin/blog"
+                className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+              >
+                บทความ
+              </Link>
+            </>
           )}
         </nav>
       </header>
