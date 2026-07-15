@@ -96,14 +96,24 @@ export default async function PropertyDetailPage({
             </p>
           )}
           {property.lat != null && property.lng != null && (
-            <a
-              href={`https://www.google.com/maps?q=${property.lat},${property.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block text-sm text-amber-700 hover:underline"
-            >
-              📍 Google Maps →
-            </a>
+            <div className="space-y-1.5">
+              {/* free Google Maps embed — no API key required */}
+              <iframe
+                src={`https://maps.google.com/maps?q=${property.lat},${property.lng}&z=15&output=embed`}
+                className="h-64 w-full rounded-xl border"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="map"
+              />
+              <a
+                href={`https://www.google.com/maps?q=${property.lat},${property.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm text-amber-700 hover:underline"
+              >
+                📍 เปิดใน Google Maps →
+              </a>
+            </div>
           )}
         </div>
 

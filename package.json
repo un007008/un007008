@@ -41,10 +41,12 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "better-sqlite3": "^12.11.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "playwright-core": "^1.61.1",
