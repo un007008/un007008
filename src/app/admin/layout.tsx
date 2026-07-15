@@ -61,6 +61,12 @@ export default async function AdminLayout({
             CRM
           </Link>
           <Link
+            href="/admin/calendar"
+            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+          >
+            ปฏิทิน
+          </Link>
+          <Link
             href="/admin/knowledge"
             className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >

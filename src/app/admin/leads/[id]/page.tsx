@@ -6,10 +6,10 @@ import {
   AppointmentStatusSelect,
 } from "@/components/leads/appointment-form";
 import { AssignSelect } from "@/components/leads/assign-select";
+import { DealSection } from "@/components/leads/deal-section";
 import { NoteEditor } from "@/components/leads/note-editor";
 import { StageSelect } from "@/components/leads/stage-select";
 import { STAGE_LABEL } from "@/lib/lead-labels";
-import { Badge } from "@/components/ui/badge";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -33,7 +33,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
     include: {
       contact: { include: { conversations: { orderBy: { updatedAt: "desc" }, take: 1 } } },
       appointments: { orderBy: { datetime: "desc" } },
-      deal: true,
+      deal: { include: { documents: { orderBy: { createdAt: "desc" } } } },
     },
   });
   if (!lead) notFound();
@@ -153,18 +153,31 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
             ))}
           </div>
 
-          {/* deal placeholder */}
+          {/* deal */}
           <div className="rounded-lg border p-3">
-            <p className="mb-1 text-xs font-semibold text-muted-foreground">Deal</p>
-            {lead.deal ? (
-              <p className="text-sm">
-                {thb(lead.deal.amount)} บ. — <Badge variant="outline">{lead.deal.status}</Badge>
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                ยังไม่มี Deal (สร้าง Deal + อัปโหลดสัญญา จะมาในขั้นถัดไป)
-              </p>
-            )}
+            <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Deal</p>
+            <DealSection
+              leadId={lead.id}
+              propertyId={lead.propertyId ?? property?.id ?? null}
+              defaultDealType={lead.interest === "RENT" ? "RENT" : "SALE"}
+              deal={
+                lead.deal
+                  ? {
+                      id: lead.deal.id,
+                      dealType: lead.deal.dealType === "RENT" ? "RENT" : "SALE",
+                      amount: lead.deal.amount.toString(),
+                      status: lead.deal.status,
+                      contractStart: lead.deal.contractStart?.toISOString() ?? null,
+                      contractEnd: lead.deal.contractEnd?.toISOString() ?? null,
+                      documents: lead.deal.documents.map((d) => ({
+                        id: d.id,
+                        name: d.name,
+                        url: d.url,
+                      })),
+                    }
+                  : null
+              }
+            />
           </div>
         </div>
 
