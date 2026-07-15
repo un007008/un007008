@@ -38,44 +38,44 @@ export default async function AdminLayout({
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 text-sm">
           <Link
             href="/admin"
-            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >
             แดชบอร์ด
           </Link>
           <Link
             href="/admin/inbox"
-            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >
             กล่องข้อความ
           </Link>
           <Link
             href="/admin/leads"
-            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >
             ลูกค้ามุ่งหวัง
           </Link>
           <Link
             href="/admin/crm"
-            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >
             CRM
           </Link>
           <Link
             href="/admin/calendar"
-            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >
             ปฏิทิน
           </Link>
           <Link
             href="/admin/knowledge"
-            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >
             คลังความรู้ AI
           </Link>
           {session.user.role === "ADMIN" && (
             <Link
               href="/admin/properties"
-              className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+              className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
             >
               ทรัพย์
             </Link>
@@ -84,19 +84,19 @@ export default async function AdminLayout({
             <>
               <Link
                 href="/admin/settings/homepage"
-                className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
               >
                 หน้าแรกเว็บ
               </Link>
               <Link
                 href="/admin/media"
-                className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
               >
                 คลังสื่อ
               </Link>
               <Link
                 href="/admin/blog"
-                className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
               >
                 บทความ
               </Link>
