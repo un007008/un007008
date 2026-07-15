@@ -9,7 +9,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:deploy": "prisma migrate deploy",
-    "railway:start": "prisma migrate deploy && next start -p ${PORT:-3000}"
+    "railway:start": "prisma migrate deploy && next start -p ${PORT:-3000}",
+    "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

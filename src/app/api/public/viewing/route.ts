@@ -4,8 +4,30 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+// naive per-IP rate limit (in-memory, resets on redeploy) — enough to stop
+// casual form spam on a single-instance deployment
+const hits = new Map<string, { count: number; windowStart: number }>();
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_PER_WINDOW = 5;
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = hits.get(ip);
+  if (!entry || now - entry.windowStart > WINDOW_MS) {
+    hits.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count += 1;
+  if (hits.size > 5000) hits.clear(); // memory backstop
+  return entry.count > MAX_PER_WINDOW;
+}
+
 /** Public viewing-request form -> Contact + Lead (WEBSITE_FORM) + Appointment. */
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (rateLimited(ip)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
   const body = (await req.json()) as {
     propertyId?: string;
     name?: string;

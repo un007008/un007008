@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleEvent(event: webhook.Event) {
+  // LINE may redeliver events after timeouts — skip to avoid duplicate rows
+  if (event.deliveryContext?.isRedelivery) return;
+
   const lineUserId = event.source?.type === "user" ? event.source.userId : null;
   if (!lineUserId) return;
 
