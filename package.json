@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "railway:start": "prisma migrate deploy && next start -p ${PORT:-3000}"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
