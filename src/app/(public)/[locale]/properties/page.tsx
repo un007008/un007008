@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 
-import { PropertyCard } from "@/components/public/property-card";
+import { PropertyCard, thb } from "@/components/public/property-card";
+import { SearchMap, type MapPin } from "@/components/public/search-map";
 import { prisma } from "@/lib/db";
+import { t } from "@/lib/i18n";
 import { LOCALES, UI, isLocale, type Locale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -154,6 +156,27 @@ export default async function PropertiesPage({
       <p className="text-sm text-muted-foreground">
         {ui.results}: {properties.length}
       </p>
+
+      <SearchMap
+        locale={locale}
+        toggleLabel={{ show: ui.showMap, hide: ui.hideMap }}
+        pins={properties
+          .filter((p): p is typeof p & { lat: number; lng: number } => p.lat != null && p.lng != null)
+          .map(
+            (p): MapPin => ({
+              slug: p.slug,
+              lat: p.lat,
+              lng: p.lng,
+              title: t(p.title, locale),
+              priceLabel:
+                p.priceSale != null
+                  ? `${thb(p.priceSale)} ${ui.baht}`
+                  : p.priceRent != null
+                    ? `${thb(p.priceRent)} ${ui.bahtPerMonth}`
+                    : "-",
+            })
+          )}
+      />
 
       {properties.length === 0 ? (
         <p className="rounded-xl border p-10 text-center text-sm text-muted-foreground">

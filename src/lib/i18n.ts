@@ -58,6 +58,8 @@ export const UI = {
     commercial: "อาคารพาณิชย์",
     land: "ที่ดิน",
     viewAll: "ดูทั้งหมด",
+    showMap: "แสดงแผนที่",
+    hideMap: "ซ่อนแผนที่",
   },
   en: {
     siteName: "Bangkok Prime Property",
@@ -102,6 +104,8 @@ export const UI = {
     commercial: "Commercial",
     land: "Land",
     viewAll: "View all",
+    showMap: "Show map",
+    hideMap: "Hide map",
   },
   zh: {
     siteName: "Bangkok Prime Property",
@@ -146,6 +150,8 @@ export const UI = {
     commercial: "商铺",
     land: "土地",
     viewAll: "查看全部",
+    showMap: "显示地图",
+    hideMap: "隐藏地图",
   },
 } as const;
 

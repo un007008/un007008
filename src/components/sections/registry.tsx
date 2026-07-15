@@ -184,6 +184,41 @@ async function PromotionBanner({ locale, section }: Ctx) {
   );
 }
 
+async function FeaturedArticles({ locale, section }: Ctx) {
+  const posts = await prisma.blogPost.findMany({
+    where: { published: true },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
+  if (posts.length === 0) return null;
+  return (
+    <SectionShell locale={locale} section={section}>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {posts.map((p) => (
+          <Link
+            key={p.id}
+            href={`/${locale}/blog/${p.slug}`}
+            className="overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
+          >
+            {p.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.coverUrl} alt="" className="aspect-[16/9] w-full object-cover" />
+            ) : (
+              <div className="flex aspect-[16/9] items-center justify-center bg-muted text-2xl">📰</div>
+            )}
+            <div className="space-y-1 p-3">
+              <p className="line-clamp-2 text-sm font-medium">{t(p.title, locale)}</p>
+              <p className="text-xs text-muted-foreground">
+                {p.createdAt.toLocaleDateString(locale === "th" ? "th-TH" : locale === "zh" ? "zh-CN" : "en-GB")}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </SectionShell>
+  );
+}
+
 async function Cta({ locale, section }: Ctx) {
   const url = section.buttonUrl || process.env.NEXT_PUBLIC_LINE_OA_URL || "#";
   return (
@@ -214,5 +249,6 @@ export const SECTION_REGISTRY = {
   forSale: ForSale,
   forRent: ForRent,
   promotionBanner: PromotionBanner,
+  featuredArticles: FeaturedArticles,
   cta: Cta,
 } as const;

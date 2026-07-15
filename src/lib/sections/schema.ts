@@ -8,6 +8,7 @@ export const SECTION_TYPES = [
   "forSale",
   "forRent",
   "promotionBanner",
+  "featuredArticles",
   "cta",
 ] as const;
 
@@ -39,6 +40,7 @@ export const SECTION_LABEL: Record<SectionType, string> = {
   forSale: "ประกาศขายล่าสุด",
   forRent: "ประกาศเช่าล่าสุด",
   promotionBanner: "แบนเนอร์โปรโมชัน",
+  featuredArticles: "บทความล่าสุด",
   cta: "ชวนติดต่อ (CTA)",
 };
 
@@ -104,6 +106,13 @@ export const DEFAULT_HOMEPAGE: HomepageConfig = {
       subtitle: L("ฝากขายฟรี ไม่มีค่าใช้จ่ายจนกว่าจะขายได้", "List with us for free", "免费挂牌出售"),
       buttonLabel: L("ดูรายละเอียด", "Learn more", "了解详情"),
       buttonUrl: "",
+    },
+    {
+      id: "featuredArticles",
+      type: "featuredArticles",
+      visible: true,
+      title: L("บทความและความรู้", "Articles & guides", "文章与指南"),
+      subtitle: L("", "", ""),
     },
     {
       id: "cta",
