@@ -26,12 +26,12 @@ export default async function AdminLayout({
             PropOS
           </Link>
           <div className="flex items-center gap-3">
-            <div className="text-right text-sm leading-tight">
+            <Link href="/admin/account" className="text-right text-sm leading-tight hover:underline">
               <div className="font-medium">{session.user.name}</div>
               <div className="text-xs text-muted-foreground">
                 {ROLE_LABEL[session.user.role] ?? session.user.role}
               </div>
-            </div>
+            </Link>
             <SignOutButton />
           </div>
         </div>
@@ -99,6 +99,12 @@ export default async function AdminLayout({
                 className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
               >
                 บทความ
+              </Link>
+              <Link
+                href="/admin/settings/users"
+                className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+              >
+                ผู้ใช้
               </Link>
             </>
           )}
