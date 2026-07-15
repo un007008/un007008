@@ -55,6 +55,12 @@ export default async function AdminLayout({
             ลูกค้ามุ่งหวัง
           </Link>
           <Link
+            href="/admin/crm"
+            className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+          >
+            CRM
+          </Link>
+          <Link
             href="/admin/knowledge"
             className="rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
           >

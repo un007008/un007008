@@ -3,16 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export const STAGE_LABEL: Record<string, string> = {
-  NEW: "ใหม่",
-  CONTACTED: "ติดต่อแล้ว",
-  QUALIFIED: "คัดกรองแล้ว",
-  VIEWING_SCHEDULED: "นัดชมแล้ว",
-  VIEWED: "ชมแล้ว",
-  OFFER: "ยื่นข้อเสนอ",
-  CLOSED_WON: "ปิดสำเร็จ",
-  CLOSED_LOST: "ปิดไม่สำเร็จ",
-};
+import { STAGE_LABEL } from "@/lib/lead-labels";
+
+export { STAGE_LABEL };
 
 export function StageSelect({ leadId, stage }: { leadId: string; stage: string }) {
   const router = useRouter();

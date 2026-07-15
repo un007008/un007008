@@ -8,10 +8,10 @@ import { ContactPanel } from "./contact-panel";
 import { ConversationList } from "./conversation-list";
 import type { ChatMessage, ConversationSummary, InboxFilter } from "./types";
 
-export function InboxClient() {
+export function InboxClient({ initialSelectedId }: { initialSelectedId?: string | null }) {
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showInfoMobile, setShowInfoMobile] = useState(false);
 

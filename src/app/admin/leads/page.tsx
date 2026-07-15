@@ -61,9 +61,9 @@ export default async function LeadsPage() {
         {leads.map((l) => (
           <div key={l.id} className="space-y-1.5 rounded-lg border p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">
+              <a href={`/admin/leads/${l.id}`} className="text-sm font-medium hover:underline">
                 {l.contact.name ?? "ไม่ระบุชื่อ"}
-              </span>
+              </a>
               <StageSelect leadId={l.id} stage={l.stage} />
             </div>
             <div className="text-xs text-muted-foreground">
@@ -104,7 +104,11 @@ export default async function LeadsPage() {
           <tbody>
             {leads.map((l) => (
               <tr key={l.id} className="border-t">
-                <td className="px-3 py-2 font-medium">{l.contact.name ?? "ไม่ระบุชื่อ"}</td>
+                <td className="px-3 py-2 font-medium">
+                  <a href={`/admin/leads/${l.id}`} className="hover:underline">
+                    {l.contact.name ?? "ไม่ระบุชื่อ"}
+                  </a>
+                </td>
                 <td className="px-3 py-2">{l.contact.phone ?? "—"}</td>
                 <td className="px-3 py-2">{SOURCE_LABEL[l.source]}</td>
                 <td className="px-3 py-2">{l.interest ? INTEREST_LABEL[l.interest] : "—"}</td>

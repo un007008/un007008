@@ -25,7 +25,15 @@ export async function PATCH(
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = (await req.json()) as { stage?: string; note?: string };
+  const body = (await req.json()) as {
+    stage?: string;
+    note?: string;
+    assignedTo?: string | null;
+    interest?: "SALE" | "RENT" | null;
+    budgetMin?: number | null;
+    budgetMax?: number | null;
+    propertyId?: string | null;
+  };
 
   if (body.stage && !STAGES.includes(body.stage as LeadStage)) {
     return NextResponse.json({ error: "invalid stage" }, { status: 400 });
@@ -44,6 +52,11 @@ export async function PATCH(
     data: {
       stage: (body.stage as LeadStage) ?? undefined,
       note: body.note ?? undefined,
+      assignedTo: body.assignedTo === undefined ? undefined : body.assignedTo,
+      interest: body.interest === undefined ? undefined : body.interest,
+      budgetMin: body.budgetMin === undefined ? undefined : body.budgetMin,
+      budgetMax: body.budgetMax === undefined ? undefined : body.budgetMax,
+      propertyId: body.propertyId === undefined ? undefined : body.propertyId,
     },
   });
 
