@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { auth } from "@/lib/auth";
+import { bangkokDayKey, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
 export const metadata = { title: "ปฏิทินนัดชม — PropOS" };
@@ -29,14 +30,18 @@ export default async function CalendarPage({
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/admin/calendar");
 
-  // month from ?m=YYYY-MM, default current
+  // month from ?m=YYYY-MM, default current — all boundaries in Bangkok time
   const now = new Date();
+  const [todayYear, todayMonth, todayDay] = bangkokDayKey(now).split("-").map(Number);
   const [yearStr, monthStr] = (searchParams.m ?? "").split("-");
-  const year = Number(yearStr) || now.getFullYear();
-  const month = (Number(monthStr) || now.getMonth() + 1) - 1; // 0-based
+  const year = Number(yearStr) || todayYear;
+  const month = (Number(monthStr) || todayMonth) - 1; // 0-based
 
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const monthStart = parseAsBangkok(`${year}-${pad(month + 1)}-01`);
+  const monthEnd = parseAsBangkok(
+    month === 11 ? `${year + 1}-01-01` : `${year}-${pad(month + 2)}-01`
+  );
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -56,15 +61,16 @@ export default async function CalendarPage({
     : [];
   const propertyRef = new Map(properties.map((p) => [p.id, p.refCode]));
 
-  // group by day
+  // group by Bangkok calendar day
   const byDay = new Map<number, typeof appointments>();
   for (const a of appointments) {
-    const day = a.datetime.getDate();
+    const day = Number(bangkokDayKey(a.datetime).slice(8));
     byDay.set(day, [...(byDay.get(day) ?? []), a]);
   }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDow = (monthStart.getDay() + 6) % 7; // Monday = 0
+  // weekday of a calendar date is TZ-independent when built from y/m/d ints
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
   const cells: (number | null)[] = [
     ...Array.from({ length: firstDow }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -73,8 +79,7 @@ export default async function CalendarPage({
   const prev = new Date(year, month - 1, 1);
   const next = new Date(year, month + 1, 1);
   const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const today =
-    now.getFullYear() === year && now.getMonth() === month ? now.getDate() : null;
+  const today = todayYear === year && todayMonth - 1 === month ? todayDay : null;
 
   return (
     <div className="space-y-4">
@@ -119,7 +124,7 @@ export default async function CalendarPage({
                       href={`/admin/leads/${a.leadId}`}
                       className={`mt-0.5 block truncate rounded px-1 py-0.5 ${a.status === "CANCELLED" || a.status === "NO_SHOW" ? "bg-zinc-100 text-zinc-500 line-through" : a.status === "DONE" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}
                     >
-                      {a.datetime.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}{" "}
+                      {a.datetime.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" })}{" "}
                       {a.lead.contact.name ?? "ลูกค้า"}
                     </Link>
                   ))}
@@ -148,7 +153,7 @@ export default async function CalendarPage({
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium">
-                  {a.datetime.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                  {a.datetime.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" })}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {a.lead.contact.name ?? "ลูกค้า"} · {propertyRef.get(a.propertyId) ?? "—"}

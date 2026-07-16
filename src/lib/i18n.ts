@@ -9,7 +9,8 @@ export function isLocale(v: string): v is Locale {
 /** Pick a language value from a {th,en,zh} JSON field, falling back to Thai. */
 export function t(json: unknown, locale: Locale): string {
   const o = (json ?? {}) as Record<string, unknown>;
-  const v = o[locale] ?? o.th ?? "";
+  // "||" not "??": an empty-string translation must fall back to Thai too
+  const v = o[locale] || o.th || "";
   return typeof v === "string" ? v : "";
 }
 

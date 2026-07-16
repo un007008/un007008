@@ -30,7 +30,11 @@ export async function POST(req: NextRequest) {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { password: await bcrypt.hash(body.newPassword, 10) },
+    data: {
+      password: await bcrypt.hash(body.newPassword, 10),
+      // invalidates every JWT session issued before now (see jwt callback)
+      passwordChangedAt: new Date(),
+    },
   });
 
   return NextResponse.json({ ok: true });

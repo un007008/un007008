@@ -31,12 +31,30 @@ export async function POST(
     return NextResponse.json({ error: "no files" }, { status: 400 });
   }
 
-  let order = property.images.length;
+  const MAX_BYTES = 15 * 1024 * 1024;
+  // start after the current max order (not count) so concurrent uploads
+  // and previous deletions can't produce duplicate order values
+  const maxOrder = await prisma.propertyImage.aggregate({
+    where: { propertyId: property.id },
+    _max: { order: true },
+  });
+  let order = (maxOrder._max.order ?? -1) + 1;
   const created = [];
   for (const file of files) {
     if (!file.type.startsWith("image/")) continue;
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: `ไฟล์ ${file.name} ใหญ่เกิน 15MB`, created }, { status: 400 });
+    }
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { full, thumb } = await processImage(buffer);
+    let full: Buffer, thumb: Buffer;
+    try {
+      ({ full, thumb } = await processImage(buffer));
+    } catch {
+      return NextResponse.json(
+        { error: `ไฟล์ ${file.name} ไม่ใช่รูปภาพที่รองรับ`, created },
+        { status: 400 }
+      );
+    }
     const key = `properties/${property.id}/${crypto.randomUUID()}`;
     const url = await storeFile(`${key}.webp`, full, "image/webp");
     const thumbUrl = await storeFile(`${key}-thumb.webp`, thumb, "image/webp");

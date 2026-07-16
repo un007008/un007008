@@ -72,19 +72,29 @@ export function InboxClient({ initialSelectedId }: { initialSelectedId?: string 
     if (res.ok) {
       const { lineDelivered } = (await res.json()) as { lineDelivered: boolean };
       if (!lineDelivered) {
-        console.warn("message saved but LINE delivery failed");
+        alert("บันทึกข้อความแล้ว แต่ส่งไปที่ LINE ไม่สำเร็จ — ลูกค้ายังไม่ได้รับข้อความนี้");
       }
       await Promise.all([loadMessages(selectedId), loadConversations()]);
+    } else {
+      alert("ส่งข้อความไม่สำเร็จ ลองใหม่อีกครั้ง");
     }
   }
 
   async function sendProperty(propertyId: string) {
     if (!selectedId) return;
-    await fetch(`/api/inbox/conversations/${selectedId}/send-property`, {
+    const res = await fetch(`/api/inbox/conversations/${selectedId}/send-property`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ propertyId }),
     });
+    if (res.ok) {
+      const { lineDelivered } = (await res.json()) as { lineDelivered: boolean };
+      if (!lineDelivered) {
+        alert("บันทึกการ์ดทรัพย์แล้ว แต่ส่งไปที่ LINE ไม่สำเร็จ — ลูกค้ายังไม่ได้รับการ์ด");
+      }
+    } else {
+      alert("ส่งการ์ดทรัพย์ไม่สำเร็จ ลองใหม่อีกครั้ง");
+    }
     await loadMessages(selectedId);
   }
 

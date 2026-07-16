@@ -8,10 +8,16 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
-  const properties = await prisma.property.findMany({
-    where: { status: { not: "HIDDEN" } },
-    select: { slug: true, updatedAt: true },
-  });
+  const [properties, posts] = await Promise.all([
+    prisma.property.findMany({
+      where: { status: { not: "HIDDEN" } },
+      select: { slug: true, updatedAt: true },
+    }),
+    prisma.blogPost.findMany({
+      where: { published: true },
+      select: { slug: true, createdAt: true },
+    }),
+  ]);
 
   const entries: MetadataRoute.Sitemap = [];
   for (const locale of LOCALES) {
@@ -23,6 +29,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: p.updatedAt,
         changeFrequency: "weekly",
         priority: 0.8,
+      });
+    }
+    entries.push({ url: `${base}/${locale}/blog`, changeFrequency: "weekly", priority: 0.6 });
+    for (const b of posts) {
+      entries.push({
+        url: `${base}/${locale}/blog/${b.slug}`,
+        lastModified: b.createdAt,
+        changeFrequency: "monthly",
+        priority: 0.5,
       });
     }
   }

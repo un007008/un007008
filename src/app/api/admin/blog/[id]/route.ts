@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { slugify } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function PATCH(
     const post = await prisma.blogPost.update({
       where: { id: params.id },
       data: {
-        slug: body.slug?.trim() || undefined,
+        slug: body.slug?.trim() ? slugify(body.slug) || undefined : undefined,
         title: body.title ?? undefined,
         content: body.content ?? undefined,
         coverUrl: body.coverUrl === undefined ? undefined : body.coverUrl?.trim() || null,

@@ -35,6 +35,13 @@ export async function storeFile(key: string, data: Buffer, contentType: string):
     );
     return `${r2.publicUrl}/${key}`;
   }
+  if (process.env.NODE_ENV === "production") {
+    // still works (served via /uploads route), but files die with the container
+    console.warn(
+      "[storage] R2 is not configured — storing uploads on local disk. " +
+        "Files will be lost on redeploy unless a volume is mounted at public/uploads."
+    );
+  }
   const filePath = path.join(LOCAL_DIR, key);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, data);

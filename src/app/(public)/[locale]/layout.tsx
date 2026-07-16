@@ -20,6 +20,13 @@ export default function PublicLayout({
 
   return (
     <div className="flex min-h-dvh flex-col">
+      {/* root layout hardcodes lang="th"; the html tag lives above this
+          segment, so correct it per-locale before paint */}
+      {locale !== "th" && (
+        <script
+          dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(locale)}` }}
+        />
+      )}
       <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
           <Link href={`/${locale}`} className="text-sm font-bold sm:text-base">

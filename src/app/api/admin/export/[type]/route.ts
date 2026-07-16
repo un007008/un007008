@@ -7,7 +7,9 @@ import { STAGE_LABEL } from "@/lib/lead-labels";
 export const dynamic = "force-dynamic";
 
 function csvEscape(v: unknown): string {
-  const s = v == null ? "" : String(v);
+  let s = v == null ? "" : String(v);
+  // neutralize spreadsheet formula injection (names/notes are user-controlled)
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

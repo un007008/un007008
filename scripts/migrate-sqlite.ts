@@ -104,7 +104,6 @@ async function main() {
   // ---- contacts + conversations + messages ----
   const contactIdByOldKey = new Map<string, string>();
   const conversationByContact = new Map<string, string>();
-  const alreadyImported = new Set<string>(); // contactIds whose messages were imported before
 
   if (contactsTable) {
     const rows = db.prepare(`SELECT * FROM "${contactsTable}"`).all() as Row[];
@@ -138,6 +137,7 @@ async function main() {
     const textCol = HINTS.messageTextColumn ?? pickColumn(cols, ["content", "text", "message", "body"]);
     const roleCol = HINTS.messageRoleColumn ?? pickColumn(cols, ["role", "sender", "direction", "from", "type"]);
     const timeCol = pickColumn(cols, ["created_at", "createdat", "timestamp", "time", "date"]);
+    const idCol = pickColumn(cols, ["id", "message_id", "messageid"]);
     console.log(`\n  message columns: user=${userCol}, text=${textCol}, role=${roleCol}, time=${timeCol}`);
 
     for (const r of rows) {
@@ -155,39 +155,56 @@ async function main() {
         contactId = contact.id;
         contactIdByOldKey.set(lineUserId, contactId);
       }
-      if (alreadyImported.has(contactId)) { imported.skipped++; continue; }
-      // one imported (CLOSED) conversation per contact
+      // one imported (CLOSED) conversation per contact — reuse a previous
+      // run's conversation so a crashed import can resume without data loss
       let conversationId = conversationByContact.get(contactId);
       if (!conversationId) {
-        // idempotency: skip contacts that already have imported messages
         const existing = await prisma.message.findFirst({
           where: {
             conversation: { contactId },
             metadata: { path: ["importedFrom"], equals: "line-ai-bot" },
           },
+          select: { conversationId: true },
         });
         if (existing) {
-          alreadyImported.add(contactId);
-          imported.skipped++;
-          continue;
+          conversationId = existing.conversationId;
+        } else {
+          const conv = await prisma.conversation.create({
+            data: { contactId, channel: "LINE", status: "CLOSED" },
+          });
+          conversationId = conv.id;
+          imported.conversations++;
         }
-        const conv = await prisma.conversation.create({
-          data: { contactId, channel: "LINE", status: "CLOSED" },
-        });
-        conversationId = conv.id;
         conversationByContact.set(contactId, conversationId);
-        imported.conversations++;
       }
 
       const role = String(r[roleCol ?? ""] ?? "").toLowerCase();
+      // exact/prefix matches only — a bare .includes("in") would misread
+      // "admin" and "outgoing" as inbound customer messages
       const isCustomer =
-        role.includes("user") || role.includes("customer") || role.includes("in") || role === "human";
+        role.includes("user") ||
+        role.includes("customer") ||
+        role === "human" ||
+        role === "in" ||
+        role.startsWith("incom") ||
+        role.startsWith("inbound") ||
+        role === "received";
       const isAi = role.includes("assistant") || role.includes("ai") || role.includes("bot");
 
       const rawTime = timeCol ? r[timeCol] : null;
       let createdAt = new Date();
       if (typeof rawTime === "number") createdAt = new Date(rawTime > 1e12 ? rawTime : rawTime * 1000);
       else if (typeof rawTime === "string" && !isNaN(Date.parse(rawTime))) createdAt = new Date(rawTime);
+
+      // per-message idempotency (by original row id, else content+time)
+      const originalId = idCol != null && r[idCol] != null ? String(r[idCol]) : null;
+      const dupe = await prisma.message.findFirst({
+        where: originalId
+          ? { conversationId, metadata: { path: ["originalId"], equals: originalId } }
+          : { conversationId, content, createdAt },
+        select: { id: true },
+      });
+      if (dupe) { imported.skipped++; continue; }
 
       await prisma.message.create({
         data: {
@@ -196,7 +213,9 @@ async function main() {
           sender: isCustomer ? "CUSTOMER" : isAi ? "AI" : "STAFF",
           content,
           createdAt,
-          metadata: { importedFrom: "line-ai-bot" },
+          metadata: originalId
+            ? { importedFrom: "line-ai-bot", originalId }
+            : { importedFrom: "line-ai-bot" },
         },
       });
       imported.messages++;

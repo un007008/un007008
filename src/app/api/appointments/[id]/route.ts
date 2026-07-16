@@ -3,6 +3,7 @@ import type { ApptStatus } from "@prisma/client";
 
 import { apiSession } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { parseAsBangkok } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +16,21 @@ export async function PATCH(
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  const existing = await prisma.appointment.findUnique({
+    where: { id: params.id },
+    include: { lead: { select: { assignedTo: true } } },
+  });
+  if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (session.user.role !== "ADMIN" && existing.lead.assignedTo !== session.user.id) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const body = (await req.json()) as { status?: string; datetime?: string; note?: string };
 
   if (body.status && !STATUSES.includes(body.status as ApptStatus)) {
     return NextResponse.json({ error: "invalid status" }, { status: 400 });
   }
-  const datetime = body.datetime ? new Date(body.datetime) : undefined;
+  const datetime = body.datetime ? parseAsBangkok(body.datetime) : undefined;
   if (datetime && isNaN(datetime.getTime())) {
     return NextResponse.json({ error: "invalid datetime" }, { status: 400 });
   }

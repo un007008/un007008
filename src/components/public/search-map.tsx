@@ -25,6 +25,10 @@ export function SearchMap({
   toggleLabel: { show: string; hide: string };
 }) {
   const [open, setOpen] = useState(false);
+
+  // bindPopup renders raw HTML — escape the admin-authored title
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<ReturnType<typeof import("leaflet")["map"]> | null>(null);
 
@@ -50,14 +54,14 @@ export function SearchMap({
       for (const pin of pins) {
         const icon = L.divIcon({
           className: "",
-          html: `<div style="background:#111;color:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${pin.priceLabel}</div>`,
+          html: `<div style="background:#111;color:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${esc(pin.priceLabel)}</div>`,
           iconSize: [0, 0],
           iconAnchor: [30, 14],
         });
         L.marker([pin.lat, pin.lng], { icon })
           .addTo(map)
           .bindPopup(
-            `<a href="/${locale}/properties/${pin.slug}" style="font-size:13px;font-weight:600">${pin.title}</a><br><span style="font-size:12px">${pin.priceLabel}</span>`
+            `<a href="/${esc(locale)}/properties/${esc(pin.slug)}" style="font-size:13px;font-weight:600">${esc(pin.title)}</a><br><span style="font-size:12px">${esc(pin.priceLabel)}</span>`
           );
         bounds.extend([pin.lat, pin.lng]);
       }

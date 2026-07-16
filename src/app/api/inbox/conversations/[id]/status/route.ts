@@ -30,6 +30,12 @@ export async function POST(
 
   if (!data) return NextResponse.json({ error: "invalid action" }, { status: 400 });
 
+  const exists = await prisma.conversation.findUnique({
+    where: { id: params.id },
+    select: { id: true },
+  });
+  if (!exists) return NextResponse.json({ error: "not found" }, { status: 404 });
+
   const conversation = await prisma.conversation.update({
     where: { id: params.id },
     data,

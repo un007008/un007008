@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "railway:start": "prisma migrate deploy && next start -p ${PORT:-3000}",
-    "smoke": "bash scripts/smoke.sh"
+    "smoke": "bash scripts/smoke.sh",
+    "preflight": "node scripts/preflight.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
@@ -25,6 +26,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "isomorphic-dompurify": "^3.18.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.24.0",
     "marked": "^18.0.6",

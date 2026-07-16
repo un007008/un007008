@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
@@ -22,12 +23,29 @@ export function generateMetadata({ params }: { params: { locale: string } }): Me
 }
 
 type Search = {
-  q?: string;
-  type?: string;
-  listing?: string;
-  min?: string;
-  max?: string;
+  q?: string | string[];
+  type?: string | string[];
+  listing?: string | string[];
+  min?: string | string[];
+  max?: string | string[];
+  page?: string | string[];
 };
+
+const PAGE_SIZE = 24;
+
+const PROPERTY_TYPES = ["CONDO", "HOUSE", "TOWNHOUSE", "COMMERCIAL", "LAND"] as const;
+
+// Next.js repeats a query param as string[] — take the first value
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+// tolerate "5,000,000" / spaces; reject anything non-numeric (NaN crashes Prisma)
+function parsePrice(v: string | undefined): number | null {
+  if (!v) return null;
+  const n = Number(v.replace(/[,\s]/g, ""));
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
 
 export default async function PropertiesPage({
   params,
@@ -40,50 +58,78 @@ export default async function PropertiesPage({
   const locale = params.locale as Locale;
   const ui = UI[locale];
 
-  const q = searchParams.q?.trim();
-  const type = searchParams.type;
-  const listing = searchParams.listing;
-  const min = searchParams.min ? Number(searchParams.min) : null;
-  const max = searchParams.max ? Number(searchParams.max) : null;
+  const q = first(searchParams.q)?.trim();
+  const rawType = first(searchParams.type);
+  const type = PROPERTY_TYPES.find((v) => v === rawType); // whitelist — anything else = ignore
+  const listing = first(searchParams.listing);
+  const min = parsePrice(first(searchParams.min));
+  const max = parsePrice(first(searchParams.max));
 
-  const priceField = listing === "RENT" ? "priceRent" : "priceSale";
+  const priceRange = {
+    ...(min != null ? { gte: min } : {}),
+    ...(max != null ? { lte: max } : {}),
+  };
+  const priceFilter: Prisma.PropertyWhereInput[] =
+    min == null && max == null
+      ? []
+      : listing === "RENT"
+        ? [{ priceRent: priceRange }]
+        : listing === "SALE"
+          ? [{ priceSale: priceRange }]
+          : // no listing selected — match on either price so rent-only listings aren't dropped
+            [{ OR: [{ priceSale: priceRange }, { priceRent: priceRange }] }];
 
   const where: Prisma.PropertyWhereInput = {
     status: "AVAILABLE",
-    ...(type ? { propertyType: type as Prisma.PropertyWhereInput["propertyType"] } : {}),
+    ...(type ? { propertyType: type } : {}),
     ...(listing === "SALE"
       ? { listingType: { in: ["SALE", "SALE_AND_RENT"] } }
       : listing === "RENT"
         ? { listingType: { in: ["RENT", "SALE_AND_RENT"] } }
         : {}),
-    ...(min != null || max != null
-      ? {
-          [priceField]: {
-            ...(min != null ? { gte: min } : {}),
-            ...(max != null ? { lte: max } : {}),
-          },
-        }
-      : {}),
-    ...(q
-      ? {
-          OR: [
-            { refCode: { contains: q, mode: "insensitive" } },
-            { projectName: { contains: q, mode: "insensitive" } },
-            { district: { contains: q, mode: "insensitive" } },
-            { btsMrt: { contains: q, mode: "insensitive" } },
-            { title: { path: ["th"], string_contains: q } },
-            { title: { path: ["en"], string_contains: q } },
-          ],
-        }
-      : {}),
+    AND: [
+      ...priceFilter,
+      ...(q
+        ? [
+            {
+              OR: [
+                { refCode: { contains: q, mode: "insensitive" as const } },
+                { projectName: { contains: q, mode: "insensitive" as const } },
+                { district: { contains: q, mode: "insensitive" as const } },
+                { btsMrt: { contains: q, mode: "insensitive" as const } },
+                { title: { path: ["th"], string_contains: q } },
+                { title: { path: ["en"], string_contains: q } },
+              ],
+            },
+          ]
+        : []),
+    ],
   };
+
+  const pageRaw = Number(first(searchParams.page));
+  const total = await prisma.property.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Number.isInteger(pageRaw) && pageRaw >= 1 ? Math.min(pageRaw, totalPages) : 1;
 
   const properties = await prisma.property.findMany({
     where,
     include: { images: { orderBy: { order: "asc" }, take: 1 } },
     orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
-    take: 60,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   });
+
+  const pageHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set("q", q);
+    if (type) sp.set("type", type);
+    if (listing) sp.set("listing", listing);
+    if (first(searchParams.min)) sp.set("min", first(searchParams.min)!);
+    if (first(searchParams.max)) sp.set("max", first(searchParams.max)!);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return `/${locale}/properties${qs ? `?${qs}` : ""}`;
+  };
 
   const TYPE_OPTIONS = [
     ["", ui.all],
@@ -136,14 +182,14 @@ export default async function PropertiesPage({
         </select>
         <input
           name="min"
-          defaultValue={searchParams.min ?? ""}
+          defaultValue={first(searchParams.min) ?? ""}
           inputMode="numeric"
           placeholder={ui.priceMin}
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
         />
         <input
           name="max"
-          defaultValue={searchParams.max ?? ""}
+          defaultValue={first(searchParams.max) ?? ""}
           inputMode="numeric"
           placeholder={ui.priceMax}
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -154,7 +200,8 @@ export default async function PropertiesPage({
       </form>
 
       <p className="text-sm text-muted-foreground">
-        {ui.results}: {properties.length}
+        {ui.results}: {total}
+        {totalPages > 1 && ` · ${page}/${totalPages}`}
       </p>
 
       <SearchMap
@@ -188,6 +235,28 @@ export default async function PropertiesPage({
             <PropertyCard key={p.id} property={p} locale={locale} ui={ui} />
           ))}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-center gap-2 pt-2 text-sm">
+          {page > 1 ? (
+            <Link href={pageHref(page - 1)} className="rounded-md border px-3 py-1.5 hover:bg-accent">
+              ←
+            </Link>
+          ) : (
+            <span className="rounded-md border px-3 py-1.5 text-muted-foreground/40">←</span>
+          )}
+          <span className="px-2 text-muted-foreground">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link href={pageHref(page + 1)} className="rounded-md border px-3 py-1.5 hover:bg-accent">
+              →
+            </Link>
+          ) : (
+            <span className="rounded-md border px-3 py-1.5 text-muted-foreground/40">→</span>
+          )}
+        </nav>
       )}
     </div>
   );

@@ -16,7 +16,7 @@ export function startCron() {
       try {
         const result = await runAllJobs();
         console.log(
-          `[automation] done: ${result.contracts.length} expiring contracts, ${result.staleLeads.length} stale leads`
+          `[automation] done: ${result.contracts.items.length} expiring contracts (notified=${result.contracts.notified}), ${result.staleLeads.items.length} stale leads (notified=${result.staleLeads.notified})`
         );
       } catch (error) {
         console.error("[automation] daily jobs failed:", error);
