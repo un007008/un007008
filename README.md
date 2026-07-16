@@ -44,7 +44,8 @@ npm run dev                 # http://localhost:3000
 
 ### ก่อนเปิดใช้จริง (สำคัญ)
 
-- [ ] เปลี่ยนรหัสผ่าน admin จาก seed ทันที (แก้ใน Prisma Studio หรือสร้าง user ใหม่แล้วลบตัว seed)
+- [ ] รัน `railway run npm run preflight` — เช็ค env ครบ/ถูกต้องอัตโนมัติ
+- [ ] เปลี่ยนรหัสผ่าน admin จาก seed ทันที (เปลี่ยนแล้ว session เก่าหลุดอัตโนมัติ)
 - [ ] ตั้ง R2 — ถ้าเก็บไฟล์ในเครื่อง ไฟล์จะหายเมื่อ redeploy (หรือ mount Railway volume ที่ `public/uploads`)
 - [ ] ทดสอบ LINE webhook ด้วยการทักจริง 1 ข้อความ
 

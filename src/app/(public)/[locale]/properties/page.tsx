@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
@@ -27,7 +28,10 @@ type Search = {
   listing?: string | string[];
   min?: string | string[];
   max?: string | string[];
+  page?: string | string[];
 };
+
+const PAGE_SIZE = 24;
 
 const PROPERTY_TYPES = ["CONDO", "HOUSE", "TOWNHOUSE", "COMMERCIAL", "LAND"] as const;
 
@@ -102,12 +106,30 @@ export default async function PropertiesPage({
     ],
   };
 
+  const pageRaw = Number(first(searchParams.page));
+  const total = await prisma.property.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Number.isInteger(pageRaw) && pageRaw >= 1 ? Math.min(pageRaw, totalPages) : 1;
+
   const properties = await prisma.property.findMany({
     where,
     include: { images: { orderBy: { order: "asc" }, take: 1 } },
     orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
-    take: 60,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   });
+
+  const pageHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set("q", q);
+    if (type) sp.set("type", type);
+    if (listing) sp.set("listing", listing);
+    if (first(searchParams.min)) sp.set("min", first(searchParams.min)!);
+    if (first(searchParams.max)) sp.set("max", first(searchParams.max)!);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return `/${locale}/properties${qs ? `?${qs}` : ""}`;
+  };
 
   const TYPE_OPTIONS = [
     ["", ui.all],
@@ -178,7 +200,8 @@ export default async function PropertiesPage({
       </form>
 
       <p className="text-sm text-muted-foreground">
-        {ui.results}: {properties.length}
+        {ui.results}: {total}
+        {totalPages > 1 && ` · ${page}/${totalPages}`}
       </p>
 
       <SearchMap
@@ -212,6 +235,28 @@ export default async function PropertiesPage({
             <PropertyCard key={p.id} property={p} locale={locale} ui={ui} />
           ))}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-center gap-2 pt-2 text-sm">
+          {page > 1 ? (
+            <Link href={pageHref(page - 1)} className="rounded-md border px-3 py-1.5 hover:bg-accent">
+              ←
+            </Link>
+          ) : (
+            <span className="rounded-md border px-3 py-1.5 text-muted-foreground/40">←</span>
+          )}
+          <span className="px-2 text-muted-foreground">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link href={pageHref(page + 1)} className="rounded-md border px-3 py-1.5 hover:bg-accent">
+              →
+            </Link>
+          ) : (
+            <span className="rounded-md border px-3 py-1.5 text-muted-foreground/40">→</span>
+          )}
+        </nav>
       )}
     </div>
   );

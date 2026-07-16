@@ -8,15 +8,22 @@ import { storeFile } from "@/lib/media/storage";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const PAGE_SIZE = 60;
+
+export async function GET(req: NextRequest) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const assets = await prisma.mediaAsset.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
-  return NextResponse.json(assets);
+  const skipRaw = Number(req.nextUrl.searchParams.get("skip"));
+  const skip = Number.isInteger(skipRaw) && skipRaw > 0 ? skipRaw : 0;
+  const [assets, total] = await Promise.all([
+    prisma.mediaAsset.findMany({ orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE }),
+    prisma.mediaAsset.count(),
+  ]);
+  return NextResponse.json({ assets, total });
 }
 
 /** Upload files (multipart "files"). Images become WebP + thumb; others stored as-is. */

@@ -20,14 +20,37 @@ function fmtSize(bytes: number) {
 
 export function MediaClient() {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [total, setTotal] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/media");
-    if (res.ok) setAssets(await res.json());
+    if (res.ok) {
+      const data = (await res.json()) as { assets: Asset[]; total: number };
+      setAssets(data.assets);
+      setTotal(data.total);
+    }
   }, []);
+
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/admin/media?skip=${assets.length}`);
+      if (res.ok) {
+        const data = (await res.json()) as { assets: Asset[]; total: number };
+        setAssets((prev) => {
+          const seen = new Set(prev.map((a) => a.id));
+          return [...prev, ...data.assets.filter((a) => !seen.has(a.id))];
+        });
+        setTotal(data.total);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -51,7 +74,10 @@ export function MediaClient() {
   async function remove(id: string) {
     if (!confirm("ลบไฟล์นี้?")) return;
     const res = await fetch(`/api/admin/media/${id}`, { method: "DELETE" });
-    if (res.ok) setAssets((prev) => prev.filter((a) => a.id !== id));
+    if (res.ok) {
+      setAssets((prev) => prev.filter((a) => a.id !== id));
+      setTotal((t) => Math.max(0, t - 1));
+    }
   }
 
   async function copyUrl(asset: Asset) {
@@ -66,7 +92,9 @@ export function MediaClient() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{assets.length} ไฟล์</p>
+        <p className="text-sm text-muted-foreground">
+          {total > assets.length ? `${assets.length} / ${total} ไฟล์` : `${assets.length} ไฟล์`}
+        </p>
         <Button size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
           {uploading ? "กำลังอัปโหลด…" : "+ อัปโหลดไฟล์"}
         </Button>
@@ -105,6 +133,14 @@ export function MediaClient() {
           </p>
         )}
       </div>
+
+      {assets.length < total && (
+        <div className="flex justify-center">
+          <Button size="sm" variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+            {loadingMore ? "กำลังโหลด…" : `โหลดเพิ่ม (เหลืออีก ${total - assets.length})`}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

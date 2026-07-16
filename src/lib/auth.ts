@@ -3,24 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { createRateLimiter } from "@/lib/rate-limit";
 
-// naive in-memory login throttle (per email, resets on redeploy) — blocks
-// unbounded online password guessing on the single-instance deployment
-const loginAttempts = new Map<string, { count: number; windowStart: number }>();
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_ATTEMPTS = 10;
-
-function loginThrottled(email: string): boolean {
-  const now = Date.now();
-  const entry = loginAttempts.get(email);
-  if (!entry || now - entry.windowStart > LOGIN_WINDOW_MS) {
-    loginAttempts.set(email, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count += 1;
-  if (loginAttempts.size > 5000) loginAttempts.clear(); // memory backstop
-  return entry.count > LOGIN_MAX_ATTEMPTS;
-}
+// per-email login throttle — blocks unbounded online password guessing
+const loginThrottled = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -40,7 +26,7 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null;
         const valid = await bcrypt.compare(credentials.password, user.password);
         if (!valid) return null;
-        loginAttempts.delete(email);
+        loginThrottled.reset(email);
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),
