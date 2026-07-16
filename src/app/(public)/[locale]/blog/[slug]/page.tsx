@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 
 import { prisma } from "@/lib/db";
 import { LOCALES, UI, isLocale, t, type Locale } from "@/lib/i18n";
@@ -34,9 +35,10 @@ export default async function BlogPostPage({
   const post = await prisma.blogPost.findUnique({ where: { slug: params.slug } });
   if (!post || !post.published) notFound();
 
-  // content is admin-authored markdown (trusted input)
+  // admin-authored markdown, but sanitize anyway — a compromised or
+  // lower-privilege account must not get stored XSS on the public site
   const markdown = t(post.content, locale) || t(post.content, "th");
-  const html = await marked.parse(markdown);
+  const html = DOMPurify.sanitize(await marked.parse(markdown));
 
   return (
     <article className="mx-auto max-w-2xl space-y-4 px-4 py-6">

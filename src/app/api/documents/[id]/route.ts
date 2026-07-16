@@ -13,8 +13,14 @@ export async function DELETE(
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const doc = await prisma.document.findUnique({ where: { id: params.id } });
+  const doc = await prisma.document.findUnique({
+    where: { id: params.id },
+    include: { deal: { include: { lead: { select: { assignedTo: true } } } } },
+  });
   if (!doc) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (session.user.role !== "ADMIN" && doc.deal.lead.assignedTo !== session.user.id) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   await prisma.document.delete({ where: { id: doc.id } });
   await deleteFile(doc.url);

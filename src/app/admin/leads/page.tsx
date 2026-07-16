@@ -74,7 +74,7 @@ export default async function LeadsPage() {
             {l.note && <p className="text-xs">{l.note}</p>}
             <div className="text-[10px] text-muted-foreground">
               ผู้ดูแล: {l.assignedTo ? (userName.get(l.assignedTo) ?? "—") : "ยังไม่มอบหมาย"} ·{" "}
-              {new Date(l.createdAt).toLocaleDateString("th-TH")}
+              {new Date(l.createdAt).toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok" })}
             </div>
           </div>
         ))}
@@ -127,7 +127,7 @@ export default async function LeadsPage() {
                   {l.assignedTo ? (userName.get(l.assignedTo) ?? "—") : "ยังไม่มอบหมาย"}
                 </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {new Date(l.createdAt).toLocaleDateString("th-TH")}
+                  {new Date(l.createdAt).toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok" })}
                 </td>
               </tr>
             ))}

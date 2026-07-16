@@ -101,6 +101,8 @@ model User {
   password  String // hashed
   name      String
   role      Role
+  // when set, JWT sessions issued before this instant are rejected
+  passwordChangedAt DateTime?
   createdAt DateTime @default(now())
 }
 

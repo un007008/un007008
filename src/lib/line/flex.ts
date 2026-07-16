@@ -18,8 +18,9 @@ export function propertyFlexMessage(
   property: PropertyWithImages,
   siteUrl: string
 ): messagingApi.FlexMessage {
+  // "||" so an empty-string title falls back too — LINE rejects empty text
   const title =
-    (property.title as { th?: string } | null)?.th ?? property.refCode;
+    (property.title as { th?: string } | null)?.th || property.refCode;
   const priceLines: string[] = [];
   if (property.priceSale != null) priceLines.push(`ราคาขาย ${thb(property.priceSale)} บาท`);
   if (property.priceRent != null) priceLines.push(`ค่าเช่า ${thb(property.priceRent)} บาท/เดือน`);
@@ -76,17 +77,23 @@ export function propertyFlexMessage(
           })),
         ],
       },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "button",
-            style: "primary",
-            action: { type: "uri", label: "ดูรายละเอียด", uri: detailUrl },
-          },
-        ],
-      },
+      // LINE rejects non-https uri actions — omit the button when the site
+      // URL isn't https (e.g. NEXTAUTH_URL unset / local dev)
+      ...(detailUrl.startsWith("https://")
+        ? {
+            footer: {
+              type: "box" as const,
+              layout: "vertical" as const,
+              contents: [
+                {
+                  type: "button" as const,
+                  style: "primary" as const,
+                  action: { type: "uri" as const, label: "ดูรายละเอียด", uri: detailUrl },
+                },
+              ],
+            },
+          }
+        : {}),
     },
   };
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { parseAsBangkok } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -28,25 +29,37 @@ export async function POST(req: NextRequest) {
   if (rateLimited(ip)) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
-  const body = (await req.json()) as {
-    propertyId?: string;
-    name?: string;
-    phone?: string;
-    datetime?: string;
-    message?: string;
+  let body: {
+    propertyId?: unknown;
+    name?: unknown;
+    phone?: unknown;
+    datetime?: unknown;
+    message?: unknown;
   };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  }
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
-  const name = body.name?.trim();
-  const phone = body.phone?.trim();
-  if (!body.propertyId || !name || !phone) {
+  const propertyId = str(body.propertyId);
+  const name = str(body.name);
+  const phone = str(body.phone);
+  const datetimeInput = str(body.datetime);
+  const message = str(body.message);
+  if (!propertyId || !name || !phone) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
-  if (name.length > 200 || phone.length > 30 || (body.message ?? "").length > 2000) {
+  if (name.length > 200 || message.length > 2000 || !/^[0-9+\-\s()]{8,30}$/.test(phone)) {
     return NextResponse.json({ error: "invalid input" }, { status: 400 });
   }
 
-  const property = await prisma.property.findUnique({ where: { id: body.propertyId } });
-  if (!property) return NextResponse.json({ error: "property not found" }, { status: 404 });
+  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  // don't accept (or confirm the existence of) hidden/de-listed properties
+  if (!property || property.status === "HIDDEN") {
+    return NextResponse.json({ error: "property not found" }, { status: 404 });
+  }
 
   // reuse contact by phone when possible
   const contact =
@@ -55,8 +68,8 @@ export async function POST(req: NextRequest) {
 
   const noteParts = [
     `นัดชมจากเว็บ: ${property.refCode}`,
-    body.datetime ? `เวลาที่สะดวก: ${body.datetime}` : null,
-    body.message?.trim() ? `ข้อความ: ${body.message.trim()}` : null,
+    datetimeInput ? `เวลาที่สะดวก: ${datetimeInput}` : null,
+    message ? `ข้อความ: ${message}` : null,
   ].filter(Boolean);
 
   const lead = await prisma.lead.create({
@@ -70,7 +83,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const requestedAt = body.datetime ? new Date(body.datetime) : null;
+  const requestedAt = datetimeInput ? new Date(parseAsBangkok(datetimeInput)) : null;
   if (requestedAt && !isNaN(requestedAt.getTime())) {
     await prisma.appointment.create({
       data: {

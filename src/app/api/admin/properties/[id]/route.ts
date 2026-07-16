@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiSession } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { deleteFile } from "@/lib/media/storage";
+import { slugify } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,9 @@ export async function GET(
 ) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const property = await prisma.property.findUnique({
     where: { id: params.id },
@@ -44,7 +48,7 @@ export async function PATCH(
       where: { id: params.id },
       data: {
         refCode: body.refCode?.trim().toUpperCase() || undefined,
-        slug: body.slug?.trim() || undefined,
+        slug: body.slug?.trim() ? slugify(body.slug) || undefined : undefined,
         status: body.status ?? undefined,
         listingType: body.listingType ?? undefined,
         propertyType: body.propertyType ?? undefined,

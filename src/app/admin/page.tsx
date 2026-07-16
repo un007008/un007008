@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { bangkokDayKey, bangkokMonthStart, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { STAGE_LABEL } from "@/lib/lead-labels";
 
@@ -21,36 +22,40 @@ function thb(n: number) {
 export default async function AdminDashboardPage() {
   const session = await auth();
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  // SALES/CR see only their own leads/deals (SPEC 4.1 ข้อ 5); ADMIN sees all
+  const isAdmin = session?.user.role === "ADMIN";
+  const ownLead = isAdmin ? {} : { assignedTo: session?.user.id };
+  const ownDeal = isAdmin ? {} : { lead: { assignedTo: session?.user.id } };
+
+  const monthStart = bangkokMonthStart();
 
   const [saleDeals, rentDeals, newLeadsThisMonth, stageCounts, recentLeads] =
     await Promise.all([
       prisma.deal.aggregate({
         _sum: { amount: true },
-        where: { dealType: "SALE", status: "COMPLETED", createdAt: { gte: monthStart } },
+        where: { dealType: "SALE", status: "COMPLETED", createdAt: { gte: monthStart }, ...ownDeal },
       }),
       prisma.deal.aggregate({
         _sum: { amount: true },
-        where: { dealType: "RENT", status: { in: ["SIGNED", "COMPLETED"] }, createdAt: { gte: monthStart } },
+        where: { dealType: "RENT", status: { in: ["SIGNED", "COMPLETED"] }, createdAt: { gte: monthStart }, ...ownDeal },
       }),
-      prisma.lead.count({ where: { createdAt: { gte: monthStart } } }),
-      prisma.lead.groupBy({ by: ["stage"], _count: true }),
+      prisma.lead.count({ where: { createdAt: { gte: monthStart }, ...ownLead } }),
+      prisma.lead.groupBy({ by: ["stage"], _count: true, where: ownLead }),
       prisma.lead.findMany({
-        where: { createdAt: { gte: new Date(Date.now() - 30 * 86400000) } },
+        where: { createdAt: { gte: new Date(Date.now() - 30 * 86400000) }, ...ownLead },
         select: { createdAt: true },
       }),
     ]);
 
-  // leads per day, last 30 days
+  // leads per day, last 30 days (Bangkok calendar days)
   const trend: { date: string; count: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const day = new Date(Date.now() - i * 86400000);
-    const key = day.toISOString().slice(0, 10);
+    const key = bangkokDayKey(day);
+    const [, m, d] = key.split("-").map(Number);
     trend.push({
-      date: `${day.getDate()}/${day.getMonth() + 1}`,
-      count: recentLeads.filter((l) => l.createdAt.toISOString().slice(0, 10) === key).length,
+      date: `${d}/${m}`,
+      count: recentLeads.filter((l) => bangkokDayKey(l.createdAt) === key).length,
     });
   }
 
@@ -59,14 +64,15 @@ export default async function AdminDashboardPage() {
     count: stageCounts.find((s) => s.stage === stage)?._count ?? 0,
   }));
 
-  // alerts: expiring rental contracts (30d) + stale leads (7d)
-  const now = new Date();
+  // alerts: expiring rental contracts (30d) + stale leads (7d) — Bangkok days
+  const todayStart = parseAsBangkok(bangkokDayKey(new Date()));
   const [expiring, staleLeads, topViewed] = await Promise.all([
     prisma.deal.findMany({
       where: {
         dealType: "RENT",
         status: { in: ["SIGNED", "COMPLETED"] },
-        contractEnd: { gte: now, lte: new Date(now.getTime() + 30 * 86400000) },
+        contractEnd: { gte: todayStart, lt: new Date(todayStart.getTime() + 31 * 86400000) },
+        ...ownDeal,
       },
       include: { lead: { include: { contact: true } } },
       orderBy: { contractEnd: "asc" },
@@ -76,6 +82,7 @@ export default async function AdminDashboardPage() {
       where: {
         updatedAt: { lt: new Date(Date.now() - 7 * 86400000) },
         stage: { notIn: ["CLOSED_WON", "CLOSED_LOST"] },
+        ...ownLead,
       },
       include: { contact: true },
       orderBy: { updatedAt: "asc" },
@@ -84,6 +91,7 @@ export default async function AdminDashboardPage() {
     prisma.appointment.groupBy({
       by: ["propertyId"],
       _count: true,
+      where: isAdmin ? undefined : { lead: { assignedTo: session?.user.id } },
       orderBy: { _count: { propertyId: "desc" } },
       take: 5,
     }),
@@ -170,7 +178,10 @@ export default async function AdminDashboardPage() {
           <CardContent className="space-y-1.5 p-4 pt-0 text-sm">
             {expiring.length === 0 && <p className="text-xs text-muted-foreground">ไม่มี</p>}
             {expiring.map((d) => {
-              const days = Math.ceil((d.contractEnd!.getTime() - now.getTime()) / 86400000);
+              const days = Math.round(
+                (parseAsBangkok(bangkokDayKey(d.contractEnd!)).getTime() - todayStart.getTime()) /
+                  86400000
+              );
               return (
                 <Link key={d.id} href={`/admin/leads/${d.leadId}`} className="block hover:underline">
                   {days <= 7 ? "🔴" : "🟡"} {d.lead.contact.name ?? "ไม่ระบุ"} — อีก {days} วัน

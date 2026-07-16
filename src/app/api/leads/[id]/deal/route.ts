@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { parseAsBangkok } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,9 @@ export async function POST(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const start = body.contractStart ? new Date(body.contractStart) : null;
-  const end = body.contractEnd ? new Date(body.contractEnd) : null;
+  // date-only strings are Bangkok calendar dates, not UTC
+  const start = body.contractStart ? parseAsBangkok(body.contractStart) : null;
+  const end = body.contractEnd ? parseAsBangkok(body.contractEnd) : null;
 
   const deal = await prisma.deal.create({
     data: {

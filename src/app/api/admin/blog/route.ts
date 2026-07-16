@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const posts = await prisma.blogPost.findMany({ orderBy: { createdAt: "desc" } });
   return NextResponse.json(posts);

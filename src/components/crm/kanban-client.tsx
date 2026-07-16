@@ -154,14 +154,18 @@ export function KanbanClient({ initialLeads }: { initialLeads: KanbanLead[] }) {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.stage === newStage || !STAGES.includes(newStage)) return;
 
-    const prev = leads;
+    const prevStage = lead.stage;
     setLeads((ls) => ls.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l)));
     const res = await fetch(`/api/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage: newStage }),
     });
-    if (!res.ok) setLeads(prev); // roll back on failure
+    if (!res.ok) {
+      // roll back only this card — a stale snapshot would wipe concurrent drags
+      setLeads((ls) => ls.map((l) => (l.id === leadId ? { ...l, stage: prevStage } : l)));
+      alert("เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้ง");
+    }
   }
 
   return (

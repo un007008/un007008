@@ -15,8 +15,14 @@ export async function POST(
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const deal = await prisma.deal.findUnique({ where: { id: params.id } });
+  const deal = await prisma.deal.findUnique({
+    where: { id: params.id },
+    include: { lead: { select: { assignedTo: true } } },
+  });
   if (!deal) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (session.user.role !== "ADMIN" && deal.lead.assignedTo !== session.user.id) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const formData = await req.formData();
   const files = formData.getAll("files").filter((f): f is File => f instanceof File);

@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
+import { bangkokDayKey, fmtBangkokDate, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { lineClient } from "@/lib/line/client";
 
@@ -27,21 +28,24 @@ function thb(n: unknown) {
 
 /** Rental contracts expiring within 7 or 30 days -> staff alert. */
 export async function checkExpiringContracts() {
-  const now = new Date();
-  const in30 = new Date(now.getTime() + 30 * 86400000);
+  // count in Bangkok calendar days so the 7/30-day windows aren't skewed
+  // by the server's UTC clock (cron fires 03:00 Bangkok = 20:00 UTC yesterday)
+  const todayStart = parseAsBangkok(bangkokDayKey(new Date()));
+  const in30 = new Date(todayStart.getTime() + 31 * 86400000);
 
   const deals = await prisma.deal.findMany({
     where: {
       dealType: "RENT",
       status: { in: ["SIGNED", "COMPLETED"] },
-      contractEnd: { gte: now, lte: in30 },
+      contractEnd: { gte: todayStart, lt: in30 },
     },
     include: { lead: { include: { contact: true } } },
     orderBy: { contractEnd: "asc" },
   });
 
   const items = deals.map((d) => {
-    const days = Math.ceil((d.contractEnd!.getTime() - now.getTime()) / 86400000);
+    const endDayStart = parseAsBangkok(bangkokDayKey(d.contractEnd!));
+    const days = Math.round((endDayStart.getTime() - todayStart.getTime()) / 86400000);
     return {
       dealId: d.id,
       contact: d.lead.contact.name ?? "ไม่ระบุชื่อ",
@@ -52,15 +56,18 @@ export async function checkExpiringContracts() {
     };
   });
 
+  let notified = false;
   if (items.length > 0) {
     const lines = items.map(
       (i) =>
-        `${i.urgent ? "🔴" : "🟡"} ${i.contact} — สัญญาหมด ${new Date(i.contractEnd).toLocaleDateString("th-TH")} (อีก ${i.daysLeft} วัน) ค่าเช่า ${thb(i.amount)} บ.`
+        `${i.urgent ? "🔴" : "🟡"} ${i.contact} — สัญญาหมด ${fmtBangkokDate(new Date(i.contractEnd))} (อีก ${i.daysLeft} วัน) ค่าเช่า ${thb(i.amount)} บ.`
     );
-    await notifyStaff(`⏰ สัญญาเช่าใกล้หมดอายุ ${items.length} ราย\n${lines.join("\n")}`);
+    notified = await notifyStaff(
+      `⏰ สัญญาเช่าใกล้หมดอายุ ${items.length} ราย\n${lines.join("\n")}`
+    );
   }
 
-  return items;
+  return { items, notified };
 }
 
 const STALE_DAYS = 7;
@@ -90,16 +97,17 @@ export async function checkStaleLeads() {
     idleDays: Math.floor((Date.now() - l.updatedAt.getTime()) / 86400000),
   }));
 
+  let notified = false;
   if (items.length > 0) {
     const lines = items
       .slice(0, 10)
       .map((i) => `• ${i.contact} (${i.assignee}) เงียบมา ${i.idleDays} วัน`);
-    await notifyStaff(
+    notified = await notifyStaff(
       `💤 Lead ไม่มีความเคลื่อนไหวเกิน ${STALE_DAYS} วัน: ${items.length} ราย\n${lines.join("\n")}`
     );
   }
 
-  return items;
+  return { items, notified };
 }
 
 const SummarySchema = z.object({
@@ -151,7 +159,7 @@ export async function nightlySummary() {
       return { skipped: "ai refused" };
     }
 
-    const key = `summary:${new Date().toISOString().slice(0, 10)}`;
+    const key = `summary:${bangkokDayKey(new Date())}`;
     await prisma.siteConfig.upsert({
       where: { id: key },
       create: { id: key, data: response.parsed_output },

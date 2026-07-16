@@ -141,7 +141,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
               <div key={a.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
                 <div>
                   <div className="font-medium">
-                    {a.datetime.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                    {a.datetime.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" })}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {apptRef.get(a.propertyId) ?? "—"}
@@ -193,7 +193,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <div className="min-w-0">
                   <p className="break-words">{item.text}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {item.at.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                    {item.at.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" })}
                   </p>
                 </div>
               </div>

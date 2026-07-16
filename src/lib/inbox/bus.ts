@@ -15,7 +15,10 @@ const globalForBus = globalThis as unknown as { inboxBus?: EventEmitter };
 export const inboxBus = globalForBus.inboxBus ?? new EventEmitter();
 inboxBus.setMaxListeners(100);
 
-if (process.env.NODE_ENV !== "production") globalForBus.inboxBus = inboxBus;
+// Register in production too: each route compiles into its own server bundle,
+// so without the globalThis singleton the webhook would emit on a different
+// EventEmitter than the SSE stream listens on and realtime would silently die.
+globalForBus.inboxBus = inboxBus;
 
 export function emitInboxEvent(event: InboxEvent) {
   inboxBus.emit("inbox", event);

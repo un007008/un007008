@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { parseAsBangkok } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,8 @@ export async function POST(
     note?: string;
   };
 
-  const datetime = body.datetime ? new Date(body.datetime) : null;
+  // datetime-local strings are zone-less — interpret as Bangkok wall-clock
+  const datetime = body.datetime ? parseAsBangkok(body.datetime) : null;
   if (!body.propertyId || !datetime || isNaN(datetime.getTime())) {
     return NextResponse.json({ error: "propertyId and datetime required" }, { status: 400 });
   }

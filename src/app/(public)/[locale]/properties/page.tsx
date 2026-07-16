@@ -22,12 +22,26 @@ export function generateMetadata({ params }: { params: { locale: string } }): Me
 }
 
 type Search = {
-  q?: string;
-  type?: string;
-  listing?: string;
-  min?: string;
-  max?: string;
+  q?: string | string[];
+  type?: string | string[];
+  listing?: string | string[];
+  min?: string | string[];
+  max?: string | string[];
 };
+
+const PROPERTY_TYPES = ["CONDO", "HOUSE", "TOWNHOUSE", "COMMERCIAL", "LAND"] as const;
+
+// Next.js repeats a query param as string[] — take the first value
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+// tolerate "5,000,000" / spaces; reject anything non-numeric (NaN crashes Prisma)
+function parsePrice(v: string | undefined): number | null {
+  if (!v) return null;
+  const n = Number(v.replace(/[,\s]/g, ""));
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
 
 export default async function PropertiesPage({
   params,
@@ -40,42 +54,52 @@ export default async function PropertiesPage({
   const locale = params.locale as Locale;
   const ui = UI[locale];
 
-  const q = searchParams.q?.trim();
-  const type = searchParams.type;
-  const listing = searchParams.listing;
-  const min = searchParams.min ? Number(searchParams.min) : null;
-  const max = searchParams.max ? Number(searchParams.max) : null;
+  const q = first(searchParams.q)?.trim();
+  const rawType = first(searchParams.type);
+  const type = PROPERTY_TYPES.find((v) => v === rawType); // whitelist — anything else = ignore
+  const listing = first(searchParams.listing);
+  const min = parsePrice(first(searchParams.min));
+  const max = parsePrice(first(searchParams.max));
 
-  const priceField = listing === "RENT" ? "priceRent" : "priceSale";
+  const priceRange = {
+    ...(min != null ? { gte: min } : {}),
+    ...(max != null ? { lte: max } : {}),
+  };
+  const priceFilter: Prisma.PropertyWhereInput[] =
+    min == null && max == null
+      ? []
+      : listing === "RENT"
+        ? [{ priceRent: priceRange }]
+        : listing === "SALE"
+          ? [{ priceSale: priceRange }]
+          : // no listing selected — match on either price so rent-only listings aren't dropped
+            [{ OR: [{ priceSale: priceRange }, { priceRent: priceRange }] }];
 
   const where: Prisma.PropertyWhereInput = {
     status: "AVAILABLE",
-    ...(type ? { propertyType: type as Prisma.PropertyWhereInput["propertyType"] } : {}),
+    ...(type ? { propertyType: type } : {}),
     ...(listing === "SALE"
       ? { listingType: { in: ["SALE", "SALE_AND_RENT"] } }
       : listing === "RENT"
         ? { listingType: { in: ["RENT", "SALE_AND_RENT"] } }
         : {}),
-    ...(min != null || max != null
-      ? {
-          [priceField]: {
-            ...(min != null ? { gte: min } : {}),
-            ...(max != null ? { lte: max } : {}),
-          },
-        }
-      : {}),
-    ...(q
-      ? {
-          OR: [
-            { refCode: { contains: q, mode: "insensitive" } },
-            { projectName: { contains: q, mode: "insensitive" } },
-            { district: { contains: q, mode: "insensitive" } },
-            { btsMrt: { contains: q, mode: "insensitive" } },
-            { title: { path: ["th"], string_contains: q } },
-            { title: { path: ["en"], string_contains: q } },
-          ],
-        }
-      : {}),
+    AND: [
+      ...priceFilter,
+      ...(q
+        ? [
+            {
+              OR: [
+                { refCode: { contains: q, mode: "insensitive" as const } },
+                { projectName: { contains: q, mode: "insensitive" as const } },
+                { district: { contains: q, mode: "insensitive" as const } },
+                { btsMrt: { contains: q, mode: "insensitive" as const } },
+                { title: { path: ["th"], string_contains: q } },
+                { title: { path: ["en"], string_contains: q } },
+              ],
+            },
+          ]
+        : []),
+    ],
   };
 
   const properties = await prisma.property.findMany({
@@ -136,14 +160,14 @@ export default async function PropertiesPage({
         </select>
         <input
           name="min"
-          defaultValue={searchParams.min ?? ""}
+          defaultValue={first(searchParams.min) ?? ""}
           inputMode="numeric"
           placeholder={ui.priceMin}
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
         />
         <input
           name="max"
-          defaultValue={searchParams.max ?? ""}
+          defaultValue={first(searchParams.max) ?? ""}
           inputMode="numeric"
           placeholder={ui.priceMax}
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
