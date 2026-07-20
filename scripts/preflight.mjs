@@ -30,8 +30,11 @@ if (!env.NEXTAUTH_SECRET || env.NEXTAUTH_SECRET.includes("change-me")) {
   warn("NEXTAUTH_SECRET สั้นกว่า 32 ตัวอักษร — ควรสุ่มใหม่");
 } else ok("NEXTAUTH_SECRET");
 
+const validUrl = (v) => { try { new URL(v); return true; } catch { return false; } };
 if (!env.NEXTAUTH_URL) err("NEXTAUTH_URL ยังไม่ตั้ง");
-else if (!env.NEXTAUTH_URL.startsWith("https://")) {
+else if (!validUrl(env.NEXTAUTH_URL) || env.NEXTAUTH_URL.includes("<")) {
+  err(`NEXTAUTH_URL ไม่ใช่ URL ที่ถูกต้อง (${env.NEXTAUTH_URL}) — ต้องเป็นเช่น https://xxx.up.railway.app`);
+} else if (!env.NEXTAUTH_URL.startsWith("https://")) {
   warn(`NEXTAUTH_URL ไม่ใช่ https (${env.NEXTAUTH_URL}) — ปุ่มการ์ดทรัพย์ใน LINE จะไม่ขึ้น, hreflang/sitemap จะชี้ URL ผิด`);
 } else ok("NEXTAUTH_URL");
 
