@@ -30,8 +30,11 @@ if (!env.NEXTAUTH_SECRET || env.NEXTAUTH_SECRET.includes("change-me")) {
   warn("NEXTAUTH_SECRET สั้นกว่า 32 ตัวอักษร — ควรสุ่มใหม่");
 } else ok("NEXTAUTH_SECRET");
 
+const validUrl = (v) => { try { new URL(v); return true; } catch { return false; } };
 if (!env.NEXTAUTH_URL) err("NEXTAUTH_URL ยังไม่ตั้ง");
-else if (!env.NEXTAUTH_URL.startsWith("https://")) {
+else if (!validUrl(env.NEXTAUTH_URL) || env.NEXTAUTH_URL.includes("<")) {
+  err(`NEXTAUTH_URL ไม่ใช่ URL ที่ถูกต้อง (${env.NEXTAUTH_URL}) — ต้องเป็นเช่น https://xxx.up.railway.app`);
+} else if (!env.NEXTAUTH_URL.startsWith("https://")) {
   warn(`NEXTAUTH_URL ไม่ใช่ https (${env.NEXTAUTH_URL}) — ปุ่มการ์ดทรัพย์ใน LINE จะไม่ขึ้น, hreflang/sitemap จะชี้ URL ผิด`);
 } else ok("NEXTAUTH_URL");
 
@@ -41,9 +44,15 @@ else ok("LINE_CHANNEL_SECRET");
 if (!env.LINE_CHANNEL_ACCESS_TOKEN) err("LINE_CHANNEL_ACCESS_TOKEN ยังไม่ตั้ง — ส่งข้อความกลับไม่ได้");
 else ok("LINE_CHANNEL_ACCESS_TOKEN");
 
-console.log("\n-- AI");
-if (!env.ANTHROPIC_API_KEY) warn("ANTHROPIC_API_KEY ยังไม่ตั้ง — AI ไม่ตอบเอง ทุกแชท escalate ให้คน, แปลภาษา/สรุปรายคืนไม่ทำงาน");
-else ok("ANTHROPIC_API_KEY");
+console.log("\n-- AI (ตั้งอย่างใดอย่างหนึ่ง)");
+if (env.GEMINI_API_KEY) {
+  ok("GEMINI_API_KEY (ใช้ Gemini)");
+  warn("Gemini free tier อาจนำข้อมูลไปเทรนโมเดล — ระวัง PDPA ถ้าเป็นแชทลูกค้าจริง");
+} else if (env.ANTHROPIC_API_KEY) {
+  ok("ANTHROPIC_API_KEY (ใช้ Claude)");
+} else {
+  warn("ไม่มี GEMINI_API_KEY / ANTHROPIC_API_KEY — AI ไม่ตอบเอง ทุกแชท escalate ให้คน, แปลภาษา/สรุปรายคืนไม่ทำงาน");
+}
 
 console.log("\n-- เก็บไฟล์");
 const r2Keys = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_URL"];

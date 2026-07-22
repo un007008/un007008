@@ -1,7 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
+import { structuredCompletion } from "@/lib/ai/provider";
 import { prisma } from "@/lib/db";
 
 const AutoReplySchema = z.object({
@@ -23,12 +22,6 @@ const AutoReplySchema = z.object({
 export type AutoReplyResult = z.infer<typeof AutoReplySchema> & {
   ok: boolean; // false = AI unavailable/errored -> caller must escalate
 };
-
-let _anthropic: Anthropic | null = null;
-function anthropic() {
-  if (!_anthropic) _anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY
-  return _anthropic;
-}
 
 /**
  * Generate an auto-reply for a customer message using the knowledge base.
@@ -53,15 +46,9 @@ export async function generateAutoReply(
       .map((m) => `${m.sender === "CUSTOMER" ? "ลูกค้า" : "แอดมิน"}: ${m.content}`)
       .join("\n");
 
-    const response = await anthropic().messages.parse({
-      model: "claude-opus-4-8",
-      max_tokens: 1024,
-      thinking: { type: "adaptive" },
-      output_config: {
-        // low effort: chat replies are latency-sensitive and KB lookup is simple
-        effort: "low",
-        format: zodOutputFormat(AutoReplySchema),
-      },
+    const result = await structuredCompletion({
+      schema: AutoReplySchema,
+      maxTokens: 1024,
       system: [
         "You are the LINE customer-service assistant for Bangkok Prime Property (BPP), a Thai real-estate agency.",
         "Answer ONLY from the knowledge base below. If the knowledge base does not clearly cover the question, set confident=false so a human agent takes over.",
@@ -70,21 +57,16 @@ export async function generateAutoReply(
         "## Knowledge base",
         kb || "(empty)",
       ].join("\n"),
-      messages: [
-        {
-          role: "user",
-          content: [
-            historyText ? `บทสนทนาก่อนหน้า:\n${historyText}\n` : "",
-            `ข้อความล่าสุดจากลูกค้า: ${customerMessage}`,
-          ].join("\n"),
-        },
-      ],
+      user: [
+        historyText ? `บทสนทนาก่อนหน้า:\n${historyText}\n` : "",
+        `ข้อความล่าสุดจากลูกค้า: ${customerMessage}`,
+      ].join("\n"),
     });
 
-    if (response.stop_reason === "refusal" || !response.parsed_output) {
+    if (!result) {
       return { ok: false, confident: false, answer: "", reason: "AI ตอบไม่ได้" };
     }
-    return { ok: true, ...response.parsed_output };
+    return { ok: true, ...result };
   } catch (error) {
     console.error("generateAutoReply failed:", error);
     return { ok: false, confident: false, answer: "", reason: "AI ขัดข้อง" };
