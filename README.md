@@ -27,7 +27,7 @@ npm run dev                 # http://localhost:3000
 | `DATABASE_URL` | ✅ | Postgres connection string |
 | `NEXTAUTH_URL` | ✅ | URL ของเว็บ (prod = โดเมนจริง) |
 | `NEXTAUTH_SECRET` | ✅ | สุ่มด้วย `openssl rand -base64 32` |
-| `ANTHROPIC_API_KEY` | AI | AI ตอบแชท / แปลภาษา / สรุปรายคืน (ไม่มี = escalate ให้คนตอบ) |
+| `GEMINI_API_KEY` *หรือ* `ANTHROPIC_API_KEY` | AI | AI ตอบแชท / แปลภาษา / สรุปรายคืน — ตั้ง Gemini (ฟรี, aistudio.google.com) หรือ Claude อย่างใดอย่างหนึ่ง ถ้าตั้งทั้งคู่ใช้ Gemini (ไม่มี = escalate ให้คนตอบ) ⚠ Gemini free tier อาจนำข้อมูลไปเทรน — ระวัง PDPA กับแชทลูกค้าจริง |
 | `LINE_CHANNEL_ACCESS_TOKEN` `LINE_CHANNEL_SECRET` | LINE | LINE OA webhook + ส่งข้อความ |
 | `LINE_STAFF_GROUP_ID` | — | กลุ่ม LINE ทีมงาน รับแจ้งเตือนอัตโนมัติ |
 | `R2_ACCOUNT_ID` `R2_ACCESS_KEY_ID` `R2_SECRET_ACCESS_KEY` `R2_BUCKET_NAME` `R2_PUBLIC_URL` | — | เก็บรูป/เอกสารบน Cloudflare R2 (ไม่ตั้ง = เก็บในเครื่องที่ `public/uploads`) |

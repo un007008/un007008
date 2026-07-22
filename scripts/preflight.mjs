@@ -44,9 +44,15 @@ else ok("LINE_CHANNEL_SECRET");
 if (!env.LINE_CHANNEL_ACCESS_TOKEN) err("LINE_CHANNEL_ACCESS_TOKEN ยังไม่ตั้ง — ส่งข้อความกลับไม่ได้");
 else ok("LINE_CHANNEL_ACCESS_TOKEN");
 
-console.log("\n-- AI");
-if (!env.ANTHROPIC_API_KEY) warn("ANTHROPIC_API_KEY ยังไม่ตั้ง — AI ไม่ตอบเอง ทุกแชท escalate ให้คน, แปลภาษา/สรุปรายคืนไม่ทำงาน");
-else ok("ANTHROPIC_API_KEY");
+console.log("\n-- AI (ตั้งอย่างใดอย่างหนึ่ง)");
+if (env.GEMINI_API_KEY) {
+  ok("GEMINI_API_KEY (ใช้ Gemini)");
+  warn("Gemini free tier อาจนำข้อมูลไปเทรนโมเดล — ระวัง PDPA ถ้าเป็นแชทลูกค้าจริง");
+} else if (env.ANTHROPIC_API_KEY) {
+  ok("ANTHROPIC_API_KEY (ใช้ Claude)");
+} else {
+  warn("ไม่มี GEMINI_API_KEY / ANTHROPIC_API_KEY — AI ไม่ตอบเอง ทุกแชท escalate ให้คน, แปลภาษา/สรุปรายคืนไม่ทำงาน");
+}
 
 console.log("\n-- เก็บไฟล์");
 const r2Keys = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_URL"];

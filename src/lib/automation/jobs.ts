@@ -1,7 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
+import { aiProvider, structuredCompletion } from "@/lib/ai/provider";
 import { bangkokDayKey, fmtBangkokDate, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { lineClient } from "@/lib/line/client";
@@ -137,36 +136,24 @@ export async function nightlySummary() {
   });
 
   if (messages.length === 0) return { skipped: "no messages" };
-  if (!process.env.ANTHROPIC_API_KEY) return { skipped: "no ANTHROPIC_API_KEY" };
+  if (!aiProvider()) return { skipped: "no AI key (GEMINI_API_KEY / ANTHROPIC_API_KEY)" };
 
   try {
-    const client = new Anthropic();
-    const response = await client.messages.parse({
-      model: "claude-opus-4-8",
-      max_tokens: 2048,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "low", format: zodOutputFormat(SummarySchema) },
+    const s = await structuredCompletion({
+      schema: SummarySchema,
+      maxTokens: 2048,
       system:
         "You analyze one day of Thai real-estate customer chat messages. Aggregate intents and sentiment. PDPA: never include names, phone numbers, or identifying details in the output.",
-      messages: [
-        {
-          role: "user",
-          content: messages.map((m) => `[${m.conversationId.slice(-4)}] ${m.content}`).join("\n"),
-        },
-      ],
+      user: messages.map((m) => `[${m.conversationId.slice(-4)}] ${m.content}`).join("\n"),
     });
-    if (response.stop_reason === "refusal" || !response.parsed_output) {
-      return { skipped: "ai refused" };
-    }
+    if (!s) return { skipped: "ai refused" };
 
     const key = `summary:${bangkokDayKey(new Date())}`;
     await prisma.siteConfig.upsert({
       where: { id: key },
-      create: { id: key, data: response.parsed_output },
-      update: { data: response.parsed_output },
+      create: { id: key, data: s },
+      update: { data: s },
     });
-
-    const s = response.parsed_output;
     await notifyStaff(
       `🌙 สรุปแชทเมื่อวาน: ${s.totalConversations} บทสนทนา\n` +
         s.intents.slice(0, 5).map((i) => `• ${i.intent}: ${i.count}`).join("\n")

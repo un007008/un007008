@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
+import { structuredCompletion } from "@/lib/ai/provider";
 import { apiSession } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
@@ -52,33 +51,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const client = new Anthropic();
-    const response = await client.messages.parse({
-      model: "claude-opus-4-8",
-      max_tokens: 4096,
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "low",
-        format: zodOutputFormat(TranslationSchema),
-      },
+    const result = await structuredCompletion({
+      schema: TranslationSchema,
+      maxTokens: 4096,
       system:
         "You translate Thai real-estate website copy into English and Simplified Chinese. Keep the marketing tone, keep it concise, do not add information. Return every input key exactly once.",
-      messages: [
-        {
-          role: "user",
-          content: JSON.stringify(valid),
-        },
-      ],
+      user: JSON.stringify(valid),
     });
 
-    if (response.stop_reason === "refusal" || !response.parsed_output) {
+    if (!result) {
       return NextResponse.json({ error: "translation failed" }, { status: 502 });
     }
-    return NextResponse.json(response.parsed_output);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("translate failed:", error);
     return NextResponse.json(
-      { error: "translation unavailable (check ANTHROPIC_API_KEY)" },
+      { error: "translation unavailable (ตั้ง GEMINI_API_KEY หรือ ANTHROPIC_API_KEY)" },
       { status: 502 }
     );
   }
