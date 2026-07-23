@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { DOC_STATUS_LABEL, DOC_TYPE_LABEL } from "@/lib/accounting";
 import { apiSession } from "@/lib/api-auth";
+import { bangkokDayKey } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { STAGE_LABEL } from "@/lib/lead-labels";
 
@@ -77,6 +79,47 @@ export async function GET(
         d.status,
         d.contractStart?.toISOString().slice(0, 10),
         d.contractEnd?.toISOString().slice(0, 10),
+      ]),
+    ]);
+  } else if (params.type === "accounting") {
+    const docs = await prisma.accDocument.findMany({
+      include: { contact: { select: { name: true, taxId: true } } },
+      orderBy: { issueDate: "desc" },
+    });
+    csv = toCsv([
+      [
+        "เลขเอกสาร",
+        "ประเภท",
+        "สถานะ",
+        "วันที่เอกสาร",
+        "ครบกำหนด",
+        "ผู้ติดต่อ",
+        "เลขผู้เสียภาษี",
+        "มูลค่าก่อน VAT",
+        "VAT",
+        "ยอดรวม",
+        "หัก ณ ที่จ่าย",
+        "ยอดสุทธิ",
+        "วันที่ชำระ",
+        "ช่องทางชำระ",
+        "หมายเหตุ",
+      ],
+      ...docs.map((d) => [
+        d.docNumber,
+        DOC_TYPE_LABEL[d.docType],
+        DOC_STATUS_LABEL[d.status],
+        bangkokDayKey(d.issueDate),
+        d.dueDate ? bangkokDayKey(d.dueDate) : "",
+        d.contact.name,
+        d.contact.taxId,
+        (Number(d.subtotal) - Number(d.discount)).toFixed(2),
+        Number(d.vatAmount).toFixed(2),
+        Number(d.total).toFixed(2),
+        Number(d.whtAmount).toFixed(2),
+        (Number(d.total) - Number(d.whtAmount)).toFixed(2),
+        d.paidAt ? bangkokDayKey(d.paidAt) : "",
+        d.paymentMethod,
+        d.note,
       ]),
     ]);
   } else {

@@ -64,12 +64,20 @@ export default async function AccountingDocumentsPage({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg font-semibold">เอกสารบัญชี</h1>
-        <Link
-          href="/admin/accounting/documents/new"
-          className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-        >
-          + สร้างเอกสาร
-        </Link>
+        <div className="flex shrink-0 gap-1.5">
+          <a
+            href="/api/admin/export/accounting"
+            className="rounded-md border px-3 py-2 text-sm hover:bg-accent"
+          >
+            Export CSV
+          </a>
+          <Link
+            href="/admin/accounting/documents/new"
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            + สร้างเอกสาร
+          </Link>
+        </div>
       </div>
 
       {/* type tabs */}

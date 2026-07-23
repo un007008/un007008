@@ -32,6 +32,18 @@ export default async function AccountingLayout({
         >
           ผู้ติดต่อ
         </Link>
+        <Link
+          href="/admin/accounting/tax"
+          className="shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+        >
+          รายงานภาษี
+        </Link>
+        <Link
+          href="/admin/accounting/settings"
+          className="shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+        >
+          ตั้งค่า
+        </Link>
       </nav>
       {children}
     </div>

@@ -9,6 +9,7 @@ import {
   DOC_TYPE_LABEL,
   fmtMoney,
 } from "@/lib/accounting";
+import { getCompanyProfile } from "@/lib/company";
 import { fmtBangkokDate } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
@@ -28,10 +29,13 @@ export default async function AccountingDocumentPage({
 }: {
   params: { id: string };
 }) {
-  const doc = await prisma.accDocument.findUnique({
-    where: { id: params.id },
-    include: { items: { orderBy: { order: "asc" } }, contact: true },
-  });
+  const [doc, company] = await Promise.all([
+    prisma.accDocument.findUnique({
+      where: { id: params.id },
+      include: { items: { orderBy: { order: "asc" } }, contact: true },
+    }),
+    getCompanyProfile(),
+  ]);
   if (!doc) notFound();
 
   const refDoc = doc.refDocId
@@ -91,7 +95,24 @@ export default async function AccountingDocumentPage({
 
       {/* printable document */}
       <div className="rounded-lg border p-4 sm:p-6 print:border-0 print:p-0">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
+        {company.name && (
+          <div className="border-b pb-3 text-sm">
+            <p className="font-semibold">{company.name}</p>
+            {company.taxId && (
+              <p>
+                เลขผู้เสียภาษี {company.taxId}
+                {company.branch ? ` (${company.branch})` : ""}
+              </p>
+            )}
+            {company.address && <p>{company.address}</p>}
+            {(company.phone || company.email) && (
+              <p className="text-muted-foreground">
+                {[company.phone, company.email].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 pt-3">
           <div>
             <p className="text-lg font-bold">{DOC_TYPE_LABEL[doc.docType]}</p>
             <p className="text-sm text-muted-foreground">เลขที่ {doc.docNumber}</p>
