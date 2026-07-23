@@ -327,6 +327,7 @@ model AccDocument {
   refDocId      String? // source document (e.g. the invoice a receipt was issued from)
   createdBy     String? // userId
   items         AccDocumentItem[]
+  attachments   AccAttachment[]
   contact       AccContact        @relation(fields: [contactId], references: [id])
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
@@ -346,4 +347,13 @@ model AccDocumentItem {
 model AccDocCounter {
   id    String @id // "<docType>-<yyyymm>"
   value Int    @default(0)
+}
+
+model AccAttachment {
+  id         String      @id @default(cuid())
+  documentId String
+  name       String
+  url        String
+  document   AccDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DocumentAttachments } from "@/components/accounting/attachments";
 import { DocumentActions } from "@/components/accounting/document-actions";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,7 +33,11 @@ export default async function AccountingDocumentPage({
   const [doc, company] = await Promise.all([
     prisma.accDocument.findUnique({
       where: { id: params.id },
-      include: { items: { orderBy: { order: "asc" } }, contact: true },
+      include: {
+        items: { orderBy: { order: "asc" } },
+        attachments: { orderBy: { createdAt: "desc" } },
+        contact: true,
+      },
     }),
     getCompanyProfile(),
   ]);
@@ -71,6 +76,17 @@ export default async function AccountingDocumentPage({
           }}
         />
       </div>
+
+      {doc.docType === "EXPENSE" && doc.status === "PAID" && Number(doc.whtAmount) > 0 && (
+        <p className="text-sm print:hidden">
+          <Link
+            href={`/admin/accounting/documents/${doc.id}/wht-cert`}
+            className="underline"
+          >
+            🧾 ออกหนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)
+          </Link>
+        </p>
+      )}
 
       {(refDoc || receipt) && (
         <p className="text-sm text-muted-foreground print:hidden">
@@ -216,6 +232,11 @@ export default async function AccountingDocumentPage({
           </p>
         )}
       </div>
+
+      <DocumentAttachments
+        documentId={doc.id}
+        attachments={doc.attachments.map((a) => ({ id: a.id, name: a.name, url: a.url }))}
+      />
     </div>
   );
 }

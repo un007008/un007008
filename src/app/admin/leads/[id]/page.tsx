@@ -178,6 +178,14 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                   : null
               }
             />
+            {session.user.role === "ADMIN" && lead.deal && (
+              <Link
+                href={`/admin/accounting/documents/new?dealId=${lead.deal.id}`}
+                className="mt-2 inline-block text-sm underline"
+              >
+                🧾 สร้างใบแจ้งหนี้จาก Deal นี้ (โมดูลบัญชี)
+              </Link>
+            )}
           </div>
         </div>
 
