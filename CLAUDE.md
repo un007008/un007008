@@ -21,6 +21,7 @@ npm run build                 # production build check
 
 - `src/app/(public)/` — เว็บ public (หน้าแรก, ค้นหา, รายละเอียดทรัพย์, บทความ)
 - `src/app/admin/` — admin (inbox, crm, cms, settings, dashboard)
+- `src/app/admin/accounting/` — บัญชีภายในสไตล์ PEAK (เอกสารรายรับ-รายจ่าย, ผู้ติดต่อ) — ADMIN เท่านั้น
 - `src/app/api/webhook/line/` — LINE webhook
 - `src/components/sections/` — section registry ของหน้าแรก
 - `src/lib/ai/` — Claude API (ตอบแชท, แปล, สรุป)

@@ -222,7 +222,101 @@ async function main() {
     await prisma.knowledgeEntry.createMany({ data: knowledge });
   }
 
-  console.log("Seed completed: 1 admin user, 5 properties, 10 knowledge entries");
+  // ----- Accounting sample data (dev only) -----
+  const accCount = await prisma.accContact.count();
+  if (accCount === 0) {
+    const customer = await prisma.accContact.create({
+      data: {
+        type: "CUSTOMER",
+        name: "คุณสมชาย ใจดี",
+        phone: "081-234-5678",
+        email: "somchai@example.com",
+        address: "99/1 ถ.สุขุมวิท แขวงคลองเตย เขตคลองเตย กทม. 10110",
+      },
+    });
+    const vendor = await prisma.accContact.create({
+      data: {
+        type: "VENDOR",
+        name: "บจก. มีเดียโปร จำกัด",
+        taxId: "0105555123456",
+        branch: "สำนักงานใหญ่",
+        address: "55 อาคารเอบีซี ถ.พระราม 9 เขตห้วยขวาง กทม. 10310",
+      },
+    });
+
+    const ym = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" })
+      .format(new Date())
+      .slice(0, 7)
+      .replace("-", "");
+
+    // paid invoice (income)
+    await prisma.accDocCounter.create({ data: { id: `INVOICE-${ym}`, value: 1 } });
+    await prisma.accDocument.create({
+      data: {
+        docType: "INVOICE",
+        docNumber: `INV-${ym}-0001`,
+        status: "PAID",
+        contactId: customer.id,
+        issueDate: new Date(),
+        paidAt: new Date(),
+        paymentMethod: "โอนเงิน",
+        subtotal: 100000,
+        discount: 0,
+        vatRate: 7,
+        vatAmount: 7000,
+        whtRate: 0,
+        whtAmount: 0,
+        total: 107000,
+        note: "ตัวอย่างข้อมูล dev",
+        items: {
+          create: [
+            {
+              order: 0,
+              description: "ค่านายหน้าขายคอนโด Life Asoke (PS-00001)",
+              quantity: 1,
+              unitPrice: 100000,
+              amount: 100000,
+            },
+          ],
+        },
+      },
+    });
+
+    // awaiting-payment expense
+    await prisma.accDocCounter.create({ data: { id: `EXPENSE-${ym}`, value: 1 } });
+    await prisma.accDocument.create({
+      data: {
+        docType: "EXPENSE",
+        docNumber: `EXP-${ym}-0001`,
+        status: "AWAITING_PAYMENT",
+        contactId: vendor.id,
+        issueDate: new Date(),
+        subtotal: 15000,
+        discount: 0,
+        vatRate: 7,
+        vatAmount: 1050,
+        whtRate: 3,
+        whtAmount: 450,
+        total: 16050,
+        note: "ตัวอย่างข้อมูล dev",
+        items: {
+          create: [
+            {
+              order: 0,
+              description: "ค่าโฆษณาออนไลน์ประจำเดือน",
+              quantity: 1,
+              unitPrice: 15000,
+              amount: 15000,
+            },
+          ],
+        },
+      },
+    });
+  }
+
+  console.log(
+    "Seed completed: 1 admin user, 5 properties, 10 knowledge entries, accounting samples"
+  );
 }
 
 main()

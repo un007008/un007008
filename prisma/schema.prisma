@@ -268,3 +268,82 @@ model Document {
   deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
+
+// ===== Internal Accounting (PEAK-style) =====
+
+enum AccContactType {
+  CUSTOMER
+  VENDOR
+  BOTH
+}
+
+enum AccDocType {
+  QUOTATION // ใบเสนอราคา
+  INVOICE // ใบแจ้งหนี้
+  RECEIPT // ใบเสร็จรับเงิน
+  EXPENSE // บันทึกค่าใช้จ่าย
+}
+
+enum AccDocStatus {
+  DRAFT
+  AWAITING_PAYMENT
+  PAID
+  VOID
+}
+
+model AccContact {
+  id        String         @id @default(cuid())
+  type      AccContactType @default(CUSTOMER)
+  name      String
+  taxId     String?
+  branch    String? // head office / branch no.
+  address   String?
+  phone     String?
+  email     String?
+  note      String?
+  documents AccDocument[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model AccDocument {
+  id            String            @id @default(cuid())
+  docType       AccDocType
+  docNumber     String            @unique // e.g. INV-202607-0001
+  status        AccDocStatus      @default(DRAFT)
+  contactId     String
+  issueDate     DateTime
+  dueDate       DateTime?
+  subtotal      Decimal           @default(0)
+  discount      Decimal           @default(0)
+  vatRate       Decimal           @default(7) // percent
+  vatAmount     Decimal           @default(0)
+  whtRate       Decimal           @default(0) // withholding tax percent
+  whtAmount     Decimal           @default(0)
+  total         Decimal           @default(0) // subtotal - discount + VAT
+  note          String?
+  paidAt        DateTime?
+  paymentMethod String? // เงินสด | โอนเงิน | เช็ค | บัตรเครดิต
+  refDocId      String? // source document (e.g. the invoice a receipt was issued from)
+  createdBy     String? // userId
+  items         AccDocumentItem[]
+  contact       AccContact        @relation(fields: [contactId], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model AccDocumentItem {
+  id          String      @id @default(cuid())
+  documentId  String
+  order       Int         @default(0)
+  description String
+  quantity    Decimal     @default(1)
+  unitPrice   Decimal     @default(0)
+  amount      Decimal     @default(0)
+  document    AccDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model AccDocCounter {
+  id    String @id // "<docType>-<yyyymm>"
+  value Int    @default(0)
+}

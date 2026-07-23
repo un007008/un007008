@@ -20,7 +20,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background">
+      <header className="sticky top-0 z-10 border-b bg-background print:hidden">
         <div className="flex h-14 items-center justify-between gap-2 px-4">
           <Link href="/admin" className="font-semibold">
             PropOS
@@ -82,6 +82,12 @@ export default async function AdminLayout({
           )}
           {session.user.role === "ADMIN" && (
             <>
+              <Link
+                href="/admin/accounting"
+                className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+              >
+                บัญชี
+              </Link>
               <Link
                 href="/admin/settings/homepage"
                 className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
