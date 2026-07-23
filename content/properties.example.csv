@@ -1,0 +1,3 @@
+refCode,listingType,propertyType,titleTh,descriptionTh,priceSale,priceRent,bedrooms,bathrooms,areaSqm,floor,projectName,district,btsMrt,lat,lng,featured
+BPP-00001,SALE,CONDO,คอนโด 1 นอน ใกล้ BTS อโศก วิวเมือง,"ห้องแต่งครบ พร้อมอยู่ ชั้นสูง วิวไม่บล็อก เฟอร์นิเจอร์บิวท์อิน เครื่องใช้ไฟฟ้าครบ เดิน 5 นาทีถึง BTS",4590000,,1,1,35,18,Ashton Asoke,วัฒนา,BTS อโศก,13.7380,100.5608,true
+BPP-00002,RENT,CONDO,ให้เช่าคอนโด 2 นอน สุขุมวิท 24,"ห้องมุม 2 ห้องนอน 2 ห้องน้ำ ครัวแยก เลี้ยงสัตว์ไม่ได้ ใกล้ EmQuartier",,45000,2,2,68,12,Park 24,คลองเตย,BTS พร้อมพงษ์,13.7305,100.5698,false
