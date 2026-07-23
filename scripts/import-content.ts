@@ -7,6 +7,11 @@
  *   npx tsx scripts/import-content.ts --properties my-listings.csv
  *   npx tsx scripts/import-content.ts --properties my-listings.csv --publish --translate
  *
+ * Google Sheets: share the sheet (Anyone with the link → Viewer), then pass
+ * either the normal sheet URL or its CSV export URL — both work:
+ *   npx tsx scripts/import-content.ts --properties "https://docs.google.com/spreadsheets/d/<ID>/edit?gid=0" --translate
+ * Column names in row 1 must match content/properties.example.csv.
+ *
  * Safety defaults: KB entries import as INACTIVE (AI won't use them) and
  * properties as HIDDEN (not on the public site) until you review them in
  * the admin UI or pass --activate / --publish. Re-running skips rows that
@@ -32,6 +37,28 @@ const opt = (name: string) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : null;
 };
+
+/** Read a local file or fetch a URL; Google Sheets URLs are rewritten to CSV export. */
+async function readSource(src: string): Promise<string> {
+  if (!/^https?:\/\//.test(src)) return readFileSync(src, "utf8");
+  let url = src;
+  const sheet = src.match(/docs\.google\.com\/spreadsheets\/d\/([\w-]+)/);
+  if (sheet && !src.includes("format=csv")) {
+    const gid = src.match(/[?#&]gid=(\d+)/)?.[1] ?? "0";
+    url = `https://docs.google.com/spreadsheets/d/${sheet[1]}/export?format=csv&gid=${gid}`;
+  }
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) {
+    throw new Error(
+      `ดึงข้อมูลไม่ได้ (HTTP ${res.status}) — เช็คว่าแชร์ชีตเป็น "Anyone with the link" แล้ว: ${url}`
+    );
+  }
+  const text = await res.text();
+  if (text.trimStart().startsWith("<")) {
+    throw new Error('ได้ HTML แทน CSV — ชีตยังไม่ได้แชร์แบบ "Anyone with the link"');
+  }
+  return text;
+}
 
 // ---------- tiny CSV parser (handles quoted fields with commas/newlines) ----------
 function parseCsv(text: string): Record<string, string>[] {
@@ -64,7 +91,7 @@ function parseCsv(text: string): Record<string, string>[] {
 
 // ---------- KB import ----------
 async function importKb(file: string, activate: boolean) {
-  const items = JSON.parse(readFileSync(file, "utf8")) as {
+  const items = JSON.parse(await readSource(file)) as {
     question: string; answer: string; category?: string;
   }[];
   let created = 0, skipped = 0;
@@ -111,7 +138,7 @@ async function translatePair(th: string): Promise<{ en: string; zh: string }> {
 }
 
 async function importProperties(file: string, publish: boolean, translate: boolean) {
-  const rows = parseCsv(readFileSync(file, "utf8"));
+  const rows = parseCsv(await readSource(file));
   let created = 0, skipped = 0, failed = 0;
   for (const r of rows) {
     const refCode = r.refCode?.trim();
