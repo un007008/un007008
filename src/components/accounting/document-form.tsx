@@ -38,27 +38,41 @@ const EMPTY_ROW: ItemRow = { description: "", quantity: "1", unitPrice: "" };
 const selectCls =
   "h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm";
 
+/** Defaults for a fresh document (e.g. invoice created from a CRM deal). */
+export type DocumentFormPrefill = {
+  docType?: string;
+  contactId?: string;
+  items?: ItemRow[];
+  note?: string;
+};
+
 export function DocumentForm({
   contacts,
   initial,
+  prefill,
   todayBkk,
 }: {
   contacts: ContactOption[];
   initial?: DocumentFormInitial;
+  prefill?: DocumentFormPrefill;
   todayBkk: string;
 }) {
   const router = useRouter();
-  const [docType, setDocType] = useState(initial?.docType ?? "INVOICE");
-  const [contactId, setContactId] = useState(initial?.contactId ?? "");
+  const [docType, setDocType] = useState(initial?.docType ?? prefill?.docType ?? "INVOICE");
+  const [contactId, setContactId] = useState(initial?.contactId ?? prefill?.contactId ?? "");
   const [issueDate, setIssueDate] = useState(initial?.issueDate ?? todayBkk);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
   const [rows, setRows] = useState<ItemRow[]>(
-    initial?.items.length ? initial.items : [{ ...EMPTY_ROW }]
+    initial?.items.length
+      ? initial.items
+      : prefill?.items?.length
+        ? prefill.items
+        : [{ ...EMPTY_ROW }]
   );
   const [discount, setDiscount] = useState(String(initial?.discount ?? 0));
   const [vatRate, setVatRate] = useState(String(initial?.vatRate ?? 7));
   const [whtRate, setWhtRate] = useState(String(initial?.whtRate ?? 0));
-  const [note, setNote] = useState(initial?.note ?? "");
+  const [note, setNote] = useState(initial?.note ?? prefill?.note ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
