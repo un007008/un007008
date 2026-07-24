@@ -118,6 +118,13 @@ export function DocumentActions({ doc }: { doc: DocInfo }) {
             ยกเลิกเอกสาร
           </Button>
         )}
+        {doc.docType === "QUOTATION" && doc.status !== "DRAFT" && doc.status !== "VOID" && (
+          <Button size="sm" asChild>
+            <Link href={`/admin/accounting/documents/new?refDoc=${doc.id}&docType=INVOICE`}>
+              แปลงเป็นใบแจ้งหนี้
+            </Link>
+          </Button>
+        )}
         {doc.docType === "INVOICE" &&
           (doc.status === "AWAITING_PAYMENT" || doc.status === "PAID") && (
             <>

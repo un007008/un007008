@@ -52,17 +52,25 @@ async function dealPrefill(dealId: string): Promise<DocumentFormPrefill | undefi
   };
 }
 
-/** Build a credit/debit-note prefill from an existing invoice (?refDoc=...). */
+/**
+ * Build a prefill from an existing document (?refDoc=...):
+ * credit/debit note from an invoice, or invoice from an accepted quotation.
+ */
 async function refDocPrefill(
   refDocId: string,
   docType: string
 ): Promise<DocumentFormPrefill | undefined> {
-  if (docType !== "CREDIT_NOTE" && docType !== "DEBIT_NOTE") return undefined;
   const refDoc = await prisma.accDocument.findUnique({
     where: { id: refDocId },
     include: { items: { orderBy: { order: "asc" } } },
   });
   if (!refDoc) return undefined;
+
+  const isNote =
+    (docType === "CREDIT_NOTE" || docType === "DEBIT_NOTE") && refDoc.docType === "INVOICE";
+  const isQuoteToInvoice = docType === "INVOICE" && refDoc.docType === "QUOTATION";
+  if (!isNote && !isQuoteToInvoice) return undefined;
+
   return {
     docType,
     contactId: refDoc.contactId,
@@ -72,7 +80,9 @@ async function refDocPrefill(
       quantity: String(Number(it.quantity)),
       unitPrice: String(Number(it.unitPrice)),
     })),
-    note: `${docType === "CREDIT_NOTE" ? "ลดหนี้" : "เพิ่มหนี้"}อ้างอิงใบแจ้งหนี้ ${refDoc.docNumber}`,
+    note: isQuoteToInvoice
+      ? `อ้างอิงใบเสนอราคา ${refDoc.docNumber}`
+      : `${docType === "CREDIT_NOTE" ? "ลดหนี้" : "เพิ่มหนี้"}อ้างอิงใบแจ้งหนี้ ${refDoc.docNumber}`,
   };
 }
 
@@ -97,7 +107,9 @@ export default async function NewAccountingDocumentPage({
       {prefill && (
         <p className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
           {prefill.refDocId
-            ? "คัดลอกรายการจากใบแจ้งหนี้ต้นทางให้แล้ว — แก้ไขรายการ/มูลค่าให้เหลือเฉพาะส่วนที่ลด/เพิ่มก่อนออกเอกสาร"
+            ? prefill.docType === "INVOICE"
+              ? "คัดลอกรายการจากใบเสนอราคาให้แล้ว — ตรวจสอบก่อนออกใบแจ้งหนี้"
+              : "คัดลอกรายการจากใบแจ้งหนี้ต้นทางให้แล้ว — แก้ไขรายการ/มูลค่าให้เหลือเฉพาะส่วนที่ลด/เพิ่มก่อนออกเอกสาร"
             : "เติมข้อมูลจาก Deal ใน CRM ให้แล้ว — ตรวจสอบรายการและมูลค่า (โดยเฉพาะค่านายหน้า) ก่อนออกเอกสาร"}
         </p>
       )}
