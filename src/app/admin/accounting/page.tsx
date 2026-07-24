@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DOC_STATUS_LABEL, DOC_TYPE_LABEL, fmtMoney, incomeSign } from "@/lib/accounting";
+import { docStatusLabel, DOC_TYPE_LABEL, fmtMoney, incomeSign } from "@/lib/accounting";
 import { bangkokDayKey, bangkokMonthStart, fmtBangkokDate } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
@@ -113,12 +113,14 @@ export default async function AccountingDashboardPage() {
             <CardTitle className="text-xl text-red-700">฿{fmtMoney(expense)}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>ใบแจ้งหนี้รอชำระ ({awaitingAgg._count} ฉบับ)</CardDescription>
-            <CardTitle className="text-xl text-amber-700">฿{fmtMoney(awaiting)}</CardTitle>
-          </CardHeader>
-        </Card>
+        <Link href="/admin/accounting/receivables">
+          <Card className="h-full transition-colors hover:bg-accent">
+            <CardHeader className="pb-2">
+              <CardDescription>ใบแจ้งหนี้รอชำระ ({awaitingAgg._count} ฉบับ)</CardDescription>
+              <CardTitle className="text-xl text-amber-700">฿{fmtMoney(awaiting)}</CardTitle>
+            </CardHeader>
+          </Card>
+        </Link>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>เอกสารร่าง</CardDescription>
@@ -181,7 +183,7 @@ export default async function AccountingDashboardPage() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-sm font-medium">฿{fmtMoney(Number(d.total))}</span>
-                <Badge variant={STATUS_VARIANT[d.status]}>{DOC_STATUS_LABEL[d.status]}</Badge>
+                <Badge variant={STATUS_VARIANT[d.status]}>{docStatusLabel(d.docType, d.status)}</Badge>
               </div>
             </Link>
           ))}
