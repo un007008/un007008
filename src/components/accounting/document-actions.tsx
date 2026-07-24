@@ -45,6 +45,24 @@ export function DocumentActions({ doc }: { doc: DocInfo }) {
     }
   }
 
+  async function duplicate() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/accounting/documents/${doc.id}/duplicate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "ทำซ้ำไม่สำเร็จ");
+        return;
+      }
+      router.push(`/admin/accounting/documents/${data.id}`);
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove() {
     if (!confirm(`ลบเอกสารร่าง ${doc.docNumber}?`)) return;
     setBusy(true);
@@ -100,6 +118,28 @@ export function DocumentActions({ doc }: { doc: DocInfo }) {
             ยกเลิกเอกสาร
           </Button>
         )}
+        {doc.docType === "INVOICE" &&
+          (doc.status === "AWAITING_PAYMENT" || doc.status === "PAID") && (
+            <>
+              <Button size="sm" variant="outline" asChild>
+                <Link
+                  href={`/admin/accounting/documents/new?refDoc=${doc.id}&docType=CREDIT_NOTE`}
+                >
+                  ออกใบลดหนี้
+                </Link>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link
+                  href={`/admin/accounting/documents/new?refDoc=${doc.id}&docType=DEBIT_NOTE`}
+                >
+                  ออกใบเพิ่มหนี้
+                </Link>
+              </Button>
+            </>
+          )}
+        <Button size="sm" variant="outline" onClick={() => void duplicate()} disabled={busy}>
+          ทำซ้ำ
+        </Button>
         <Button size="sm" variant="outline" onClick={() => window.print()}>
           พิมพ์ / PDF
         </Button>

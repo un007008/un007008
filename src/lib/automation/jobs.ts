@@ -109,6 +109,50 @@ export async function checkStaleLeads() {
   return { items, notified };
 }
 
+/** Invoices past their due date and still awaiting payment -> staff alert. */
+export async function checkOverdueInvoices() {
+  const todayStart = parseAsBangkok(bangkokDayKey(new Date()));
+
+  const invoices = await prisma.accDocument.findMany({
+    where: {
+      docType: "INVOICE",
+      status: "AWAITING_PAYMENT",
+      dueDate: { lt: todayStart },
+    },
+    include: { contact: { select: { name: true } } },
+    orderBy: { dueDate: "asc" },
+    take: 50,
+  });
+
+  const items = invoices.map((d) => {
+    const dueDayStart = parseAsBangkok(bangkokDayKey(d.dueDate!));
+    return {
+      documentId: d.id,
+      docNumber: d.docNumber,
+      contact: d.contact.name,
+      total: d.total.toString(),
+      dueDate: d.dueDate!.toISOString(),
+      overdueDays: Math.round((todayStart.getTime() - dueDayStart.getTime()) / 86400000),
+    };
+  });
+
+  let notified = false;
+  if (items.length > 0) {
+    const totalSum = items.reduce((s, i) => s + Number(i.total), 0);
+    const lines = items
+      .slice(0, 10)
+      .map(
+        (i) =>
+          `${i.overdueDays > 30 ? "🔴" : "🟡"} ${i.docNumber} ${i.contact} — ${thb(i.total)} บ. (เกิน ${i.overdueDays} วัน)`
+      );
+    notified = await notifyStaff(
+      `💸 ใบแจ้งหนี้เกินกำหนดชำระ ${items.length} ฉบับ รวม ${thb(totalSum)} บ.\n${lines.join("\n")}`
+    );
+  }
+
+  return { items, notified };
+}
+
 const SummarySchema = z.object({
   totalConversations: z.number().describe("number of conversations analyzed"),
   intents: z
@@ -167,10 +211,11 @@ export async function nightlySummary() {
 
 /** Run everything once (used by cron and the manual trigger endpoint). */
 export async function runAllJobs() {
-  const [contracts, staleLeads, summary] = await Promise.all([
+  const [contracts, staleLeads, overdueInvoices, summary] = await Promise.all([
     checkExpiringContracts(),
     checkStaleLeads(),
+    checkOverdueInvoices(),
     nightlySummary(),
   ]);
-  return { contracts, staleLeads, summary };
+  return { contracts, staleLeads, overdueInvoices, summary };
 }

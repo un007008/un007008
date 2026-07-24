@@ -52,12 +52,40 @@ async function dealPrefill(dealId: string): Promise<DocumentFormPrefill | undefi
   };
 }
 
+/** Build a credit/debit-note prefill from an existing invoice (?refDoc=...). */
+async function refDocPrefill(
+  refDocId: string,
+  docType: string
+): Promise<DocumentFormPrefill | undefined> {
+  if (docType !== "CREDIT_NOTE" && docType !== "DEBIT_NOTE") return undefined;
+  const refDoc = await prisma.accDocument.findUnique({
+    where: { id: refDocId },
+    include: { items: { orderBy: { order: "asc" } } },
+  });
+  if (!refDoc) return undefined;
+  return {
+    docType,
+    contactId: refDoc.contactId,
+    refDocId: refDoc.id,
+    items: refDoc.items.map((it) => ({
+      description: it.description,
+      quantity: String(Number(it.quantity)),
+      unitPrice: String(Number(it.unitPrice)),
+    })),
+    note: `${docType === "CREDIT_NOTE" ? "ลดหนี้" : "เพิ่มหนี้"}อ้างอิงใบแจ้งหนี้ ${refDoc.docNumber}`,
+  };
+}
+
 export default async function NewAccountingDocumentPage({
   searchParams,
 }: {
-  searchParams: { dealId?: string };
+  searchParams: { dealId?: string; refDoc?: string; docType?: string };
 }) {
-  const prefill = searchParams.dealId ? await dealPrefill(searchParams.dealId) : undefined;
+  const prefill = searchParams.dealId
+    ? await dealPrefill(searchParams.dealId)
+    : searchParams.refDoc
+      ? await refDocPrefill(searchParams.refDoc, searchParams.docType ?? "")
+      : undefined;
   const contacts = await prisma.accContact.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true, type: true },
@@ -68,8 +96,9 @@ export default async function NewAccountingDocumentPage({
       <h1 className="text-lg font-semibold">สร้างเอกสารบัญชี</h1>
       {prefill && (
         <p className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
-          เติมข้อมูลจาก Deal ใน CRM ให้แล้ว — ตรวจสอบรายการและมูลค่า (โดยเฉพาะค่านายหน้า)
-          ก่อนออกเอกสาร
+          {prefill.refDocId
+            ? "คัดลอกรายการจากใบแจ้งหนี้ต้นทางให้แล้ว — แก้ไขรายการ/มูลค่าให้เหลือเฉพาะส่วนที่ลด/เพิ่มก่อนออกเอกสาร"
+            : "เติมข้อมูลจาก Deal ใน CRM ให้แล้ว — ตรวจสอบรายการและมูลค่า (โดยเฉพาะค่านายหน้า) ก่อนออกเอกสาร"}
         </p>
       )}
       <DocumentForm
