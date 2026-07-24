@@ -282,6 +282,8 @@ enum AccDocType {
   INVOICE // ใบแจ้งหนี้
   RECEIPT // ใบเสร็จรับเงิน
   EXPENSE // บันทึกค่าใช้จ่าย
+  CREDIT_NOTE // ใบลดหนี้
+  DEBIT_NOTE // ใบเพิ่มหนี้
 }
 
 enum AccDocStatus {

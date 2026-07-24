@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DOC_STATUS_LABEL, DOC_TYPE_LABEL, fmtMoney } from "@/lib/accounting";
+import { DOC_STATUS_LABEL, DOC_TYPE_LABEL, fmtMoney, incomeSign } from "@/lib/accounting";
 import { bangkokDayKey, bangkokMonthStart, fmtBangkokDate } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
@@ -23,14 +23,6 @@ const STATUS_VARIANT = {
   VOID: "destructive",
 } as const;
 
-/** Income docs: paid invoices + standalone paid receipts (receipts issued
- *  from an invoice carry refDocId and are excluded to avoid double count). */
-const INCOME_WHERE = {
-  status: "PAID" as const,
-  docType: { in: ["INVOICE", "RECEIPT"] as ("INVOICE" | "RECEIPT")[] },
-  refDocId: null,
-};
-
 export default async function AccountingDashboardPage() {
   const monthStart = bangkokMonthStart();
   const now = new Date();
@@ -40,35 +32,32 @@ export default async function AccountingDashboardPage() {
     `${String(m - 5 <= 0 ? y - 1 : y)}-${String(((m - 6 + 12) % 12) + 1).padStart(2, "0")}-01T00:00:00+07:00`
   );
 
-  const [incomeAgg, expenseAgg, awaitingAgg, draftCount, paidDocs, recentDocs] =
-    await Promise.all([
-      prisma.accDocument.aggregate({
-        _sum: { total: true },
-        where: { ...INCOME_WHERE, paidAt: { gte: monthStart } },
-      }),
-      prisma.accDocument.aggregate({
-        _sum: { total: true },
-        where: { status: "PAID", docType: "EXPENSE", paidAt: { gte: monthStart } },
-      }),
-      prisma.accDocument.aggregate({
-        _sum: { total: true },
-        _count: true,
-        where: { status: "AWAITING_PAYMENT", docType: "INVOICE" },
-      }),
-      prisma.accDocument.count({ where: { status: "DRAFT" } }),
-      prisma.accDocument.findMany({
-        where: { status: "PAID", paidAt: { gte: chartStart } },
-        select: { docType: true, refDocId: true, total: true, paidAt: true },
-      }),
-      prisma.accDocument.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        include: { contact: { select: { name: true } } },
-      }),
-    ]);
+  const [awaitingAgg, draftCount, paidDocs, recentDocs] = await Promise.all([
+    prisma.accDocument.aggregate({
+      _sum: { total: true },
+      _count: true,
+      where: { status: "AWAITING_PAYMENT", docType: "INVOICE" },
+    }),
+    prisma.accDocument.count({ where: { status: "DRAFT" } }),
+    prisma.accDocument.findMany({
+      where: { status: "PAID", paidAt: { gte: chartStart } },
+      select: { docType: true, refDocId: true, total: true, paidAt: true },
+    }),
+    prisma.accDocument.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { contact: { select: { name: true } } },
+    }),
+  ]);
 
-  const income = Number(incomeAgg._sum.total ?? 0);
-  const expense = Number(expenseAgg._sum.total ?? 0);
+  // income nets credit/debit notes via incomeSign; expenses tracked separately
+  let income = 0;
+  let expense = 0;
+  for (const d of paidDocs) {
+    if (!d.paidAt || d.paidAt < monthStart) continue;
+    if (d.docType === "EXPENSE") expense += Number(d.total);
+    else income += incomeSign(d) * Number(d.total);
+  }
   const awaiting = Number(awaitingAgg._sum.total ?? 0);
 
   // income vs expense per month, last 6 Bangkok months
@@ -90,8 +79,7 @@ export default async function AccountingDashboardPage() {
     const bucket = months.find((mo) => mo.key === key);
     if (!bucket) continue;
     if (d.docType === "EXPENSE") bucket.expense += Number(d.total);
-    else if (!d.refDocId && (d.docType === "INVOICE" || d.docType === "RECEIPT"))
-      bucket.income += Number(d.total);
+    else bucket.income += incomeSign(d) * Number(d.total);
   }
   const maxBar = Math.max(1, ...months.flatMap((mo) => [mo.income, mo.expense]));
 

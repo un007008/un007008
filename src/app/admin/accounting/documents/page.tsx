@@ -11,7 +11,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "เอกสารบัญชี — PropOS" };
 
-const DOC_TYPES = ["QUOTATION", "INVOICE", "RECEIPT", "EXPENSE"] as const;
+const DOC_TYPES = [
+  "QUOTATION",
+  "INVOICE",
+  "RECEIPT",
+  "EXPENSE",
+  "CREDIT_NOTE",
+  "DEBIT_NOTE",
+] as const;
 const STATUSES = ["DRAFT", "AWAITING_PAYMENT", "PAID", "VOID"] as const;
 
 const STATUS_VARIANT = {

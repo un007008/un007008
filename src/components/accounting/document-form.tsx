@@ -31,7 +31,14 @@ export type DocumentFormInitial = {
   note: string;
 };
 
-const DOC_TYPES = ["QUOTATION", "INVOICE", "RECEIPT", "EXPENSE"] as const;
+const DOC_TYPES = [
+  "QUOTATION",
+  "INVOICE",
+  "RECEIPT",
+  "EXPENSE",
+  "CREDIT_NOTE",
+  "DEBIT_NOTE",
+] as const;
 
 const EMPTY_ROW: ItemRow = { description: "", quantity: "1", unitPrice: "" };
 
@@ -44,6 +51,7 @@ export type DocumentFormPrefill = {
   contactId?: string;
   items?: ItemRow[];
   note?: string;
+  refDocId?: string;
 };
 
 export function DocumentForm({
@@ -120,6 +128,7 @@ export function DocumentForm({
         vatRate: Number(vatRate) || 0,
         whtRate: Number(whtRate) || 0,
         note,
+        ...(prefill?.refDocId ? { refDocId: prefill.refDocId } : {}),
       };
       const res = initial
         ? await fetch(`/api/admin/accounting/documents/${initial.id}`, {

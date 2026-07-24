@@ -8,7 +8,14 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const DOC_TYPES = ["QUOTATION", "INVOICE", "RECEIPT", "EXPENSE"] as const;
+const DOC_TYPES = [
+  "QUOTATION",
+  "INVOICE",
+  "RECEIPT",
+  "EXPENSE",
+  "CREDIT_NOTE",
+  "DEBIT_NOTE",
+] as const;
 const STATUSES = ["DRAFT", "AWAITING_PAYMENT", "PAID", "VOID"] as const;
 
 export async function GET(req: NextRequest) {
@@ -56,6 +63,7 @@ export async function POST(req: NextRequest) {
     vatRate?: number;
     whtRate?: number;
     note?: string;
+    refDocId?: string; // source document (e.g. invoice a credit note adjusts)
     issue?: boolean; // true = issue immediately (AWAITING_PAYMENT), false = keep as draft
   };
 
@@ -67,6 +75,13 @@ export async function POST(req: NextRequest) {
   }
   const contact = await prisma.accContact.findUnique({ where: { id: body.contactId } });
   if (!contact) return NextResponse.json({ error: "contact not found" }, { status: 400 });
+
+  let refDocId: string | null = null;
+  if (body.refDocId) {
+    const refDoc = await prisma.accDocument.findUnique({ where: { id: body.refDocId } });
+    if (!refDoc) return NextResponse.json({ error: "ref document not found" }, { status: 400 });
+    refDocId = refDoc.id;
+  }
 
   const items = (body.items ?? [])
     .map((it) => ({
@@ -133,6 +148,7 @@ export async function POST(req: NextRequest) {
         whtAmount,
         total,
         note: body.note?.trim() || null,
+        refDocId,
         createdBy: session.user.id,
         items: {
           create: lines.map((it, i) => ({

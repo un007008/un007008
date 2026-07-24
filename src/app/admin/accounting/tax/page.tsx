@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { fmtMoney } from "@/lib/accounting";
+import { fmtMoney, incomeSign } from "@/lib/accounting";
 import { getCompanyProfile } from "@/lib/company";
 import { bangkokDayKey, fmtBangkokDate } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
@@ -116,26 +116,22 @@ export default async function TaxReportPage({
     getCompanyProfile(),
   ]);
 
-  const toRow = (d: (typeof docs)[number]): Row => ({
+  const toRow = (d: (typeof docs)[number], sign = 1): Row => ({
     id: d.id,
     docNumber: d.docNumber,
     issueDate: d.issueDate,
     contactName: d.contact.name,
     taxId: d.contact.taxId,
     branch: d.contact.branch,
-    base: Number(d.subtotal) - Number(d.discount),
-    vat: Number(d.vatAmount),
+    base: sign * (Number(d.subtotal) - Number(d.discount)),
+    vat: sign * Number(d.vatAmount),
     wht: Number(d.whtAmount),
   });
 
-  // Sales VAT: issued invoices + standalone receipts (skip receipts linked to an invoice)
+  // Sales VAT: invoices + standalone receipts + debit notes, minus credit notes
   const salesRows = docs
-    .filter(
-      (d) =>
-        (d.docType === "INVOICE" || (d.docType === "RECEIPT" && !d.refDocId)) &&
-        Number(d.vatAmount) > 0
-    )
-    .map(toRow);
+    .filter((d) => incomeSign(d) !== 0 && Number(d.vatAmount) > 0)
+    .map((d) => toRow(d, incomeSign(d)));
   // Purchase VAT: expenses
   const purchaseRows = docs
     .filter((d) => d.docType === "EXPENSE" && Number(d.vatAmount) > 0)
