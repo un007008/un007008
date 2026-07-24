@@ -39,6 +39,18 @@ export default async function AccountingLayout({
           ลูกหนี้
         </Link>
         <Link
+          href="/admin/accounting/payables"
+          className="shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+        >
+          เจ้าหนี้
+        </Link>
+        <Link
+          href="/admin/accounting/pnl"
+          className="shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+        >
+          กำไรขาดทุน
+        </Link>
+        <Link
           href="/admin/accounting/tax"
           className="shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
         >
