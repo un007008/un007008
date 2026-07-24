@@ -230,6 +230,9 @@ export function AccContactsClient() {
             </p>
             {c.address && <p className="text-xs text-muted-foreground">{c.address}</p>}
             <div className="flex gap-1.5 pt-1">
+              <Button size="sm" variant="outline" asChild>
+                <a href={`/admin/accounting/contacts/${c.id}`}>รายการเดินบัญชี</a>
+              </Button>
               <Button size="sm" variant="outline" onClick={() => startEdit(c)}>
                 แก้ไข
               </Button>

@@ -39,6 +39,18 @@ export const DOC_STATUS_LABEL: Record<AccDocStatus, string> = {
   VOID: "ยกเลิก",
 };
 
+/**
+ * Status label adjusted per document type — a quotation isn't "awaiting
+ * payment", it's awaiting the customer's acceptance.
+ */
+export function docStatusLabel(docType: AccDocType, status: AccDocStatus): string {
+  if (docType === "QUOTATION") {
+    if (status === "AWAITING_PAYMENT") return "รอตอบรับ";
+    if (status === "PAID") return "ตอบรับแล้ว";
+  }
+  return DOC_STATUS_LABEL[status];
+}
+
 export const CONTACT_TYPE_LABEL: Record<AccContactType, string> = {
   CUSTOMER: "ลูกค้า",
   VENDOR: "ผู้ขาย/คู่ค้า",

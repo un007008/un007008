@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { DOC_STATUS_LABEL, DOC_TYPE_LABEL } from "@/lib/accounting";
+import { docStatusLabel, DOC_TYPE_LABEL, incomeSign } from "@/lib/accounting";
 import { apiSession } from "@/lib/api-auth";
 import { bangkokDayKey } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
@@ -20,9 +20,9 @@ function toCsv(rows: unknown[][]): string {
   return "﻿" + rows.map((r) => r.map(csvEscape).join(",")).join("\n");
 }
 
-/** GET /api/admin/export/leads | /api/admin/export/deals */
+/** GET /api/admin/export/leads | deals | accounting | tax?m=YYYY-MM */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { type: string } }
 ) {
   const session = await apiSession();
@@ -107,7 +107,7 @@ export async function GET(
       ...docs.map((d) => [
         d.docNumber,
         DOC_TYPE_LABEL[d.docType],
-        DOC_STATUS_LABEL[d.status],
+        docStatusLabel(d.docType, d.status),
         bangkokDayKey(d.issueDate),
         d.dueDate ? bangkokDayKey(d.dueDate) : "",
         d.contact.name,
@@ -121,6 +121,59 @@ export async function GET(
         d.paymentMethod,
         d.note,
       ]),
+    ]);
+  } else if (params.type === "tax") {
+    const m = req.nextUrl.searchParams.get("m") ?? "";
+    const ym = /^\d{4}-\d{2}$/.test(m) ? m : bangkokDayKey(new Date()).slice(0, 7);
+    const [y, mo] = ym.split("-").map(Number);
+    const monthStart = new Date(`${ym}-01T00:00:00+07:00`);
+    const nextYm = mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
+    const nextMonthStart = new Date(`${nextYm}-01T00:00:00+07:00`);
+
+    const docs = await prisma.accDocument.findMany({
+      where: {
+        status: { in: ["AWAITING_PAYMENT", "PAID"] },
+        issueDate: { gte: monthStart, lt: nextMonthStart },
+      },
+      orderBy: { issueDate: "asc" },
+      include: { contact: { select: { name: true, taxId: true, branch: true } } },
+    });
+
+    const rows: unknown[][] = [];
+    for (const d of docs) {
+      const base = Number(d.subtotal) - Number(d.discount);
+      const sign = incomeSign(d);
+      const sections: [string, number][] = [];
+      if (sign !== 0 && Number(d.vatAmount) > 0) sections.push(["ภาษีขาย", sign]);
+      if (d.docType === "EXPENSE" && Number(d.vatAmount) > 0) sections.push(["ภาษีซื้อ", 1]);
+      if (d.docType === "EXPENSE" && Number(d.whtAmount) > 0) sections.push(["หัก ณ ที่จ่าย", 1]);
+      for (const [section, s] of sections) {
+        rows.push([
+          section,
+          bangkokDayKey(d.issueDate),
+          d.docNumber,
+          DOC_TYPE_LABEL[d.docType],
+          d.contact.name,
+          d.contact.taxId ? `${d.contact.taxId}${d.contact.branch ? ` (${d.contact.branch})` : ""}` : "",
+          (s * base).toFixed(2),
+          section === "หัก ณ ที่จ่าย" ? "" : (s * Number(d.vatAmount)).toFixed(2),
+          section === "หัก ณ ที่จ่าย" ? Number(d.whtAmount).toFixed(2) : "",
+        ]);
+      }
+    }
+    csv = toCsv([
+      [
+        "รายงาน",
+        "วันที่",
+        "เลขเอกสาร",
+        "ประเภทเอกสาร",
+        "ผู้ติดต่อ",
+        "เลขผู้เสียภาษี",
+        "ฐานภาษี",
+        "VAT",
+        "หัก ณ ที่จ่าย",
+      ],
+      ...rows,
     ]);
   } else {
     return NextResponse.json({ error: "unknown export type" }, { status: 404 });

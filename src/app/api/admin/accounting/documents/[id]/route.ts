@@ -153,7 +153,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       const result = await prisma.$transaction(async (tx) => {
         const updated = await tx.accDocument.update({
           where: { id: doc.id },
-          data: { status: "PAID", paidAt, paymentMethod },
+          // a quotation is "accepted", not paid — no payment method applies
+          data: {
+            status: "PAID",
+            paidAt,
+            paymentMethod: doc.docType === "QUOTATION" ? null : paymentMethod,
+          },
           include: { items: { orderBy: { order: "asc" } } },
         });
 

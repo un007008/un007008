@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { AccDocStatus, AccDocType, Prisma } from "@prisma/client";
 
 import { Badge } from "@/components/ui/badge";
-import { DOC_STATUS_LABEL, DOC_TYPE_LABEL, fmtMoney } from "@/lib/accounting";
+import { DOC_STATUS_LABEL, docStatusLabel, DOC_TYPE_LABEL, fmtMoney } from "@/lib/accounting";
 import { fmtBangkokDate } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -172,7 +172,7 @@ export default async function AccountingDocumentsPage({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="font-medium">฿{fmtMoney(Number(d.total))}</span>
-              <Badge variant={STATUS_VARIANT[d.status]}>{DOC_STATUS_LABEL[d.status]}</Badge>
+              <Badge variant={STATUS_VARIANT[d.status]}>{docStatusLabel(d.docType, d.status)}</Badge>
             </div>
           </Link>
         ))}

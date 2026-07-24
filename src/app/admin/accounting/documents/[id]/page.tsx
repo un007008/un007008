@@ -6,7 +6,7 @@ import { DocumentActions } from "@/components/accounting/document-actions";
 import { Badge } from "@/components/ui/badge";
 import {
   CONTACT_TYPE_LABEL,
-  DOC_STATUS_LABEL,
+  docStatusLabel,
   DOC_TYPE_LABEL,
   fmtMoney,
 } from "@/lib/accounting";
@@ -65,7 +65,7 @@ export default async function AccountingDocumentPage({
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">{doc.docNumber}</h1>
-          <Badge variant={STATUS_VARIANT[doc.status]}>{DOC_STATUS_LABEL[doc.status]}</Badge>
+          <Badge variant={STATUS_VARIANT[doc.status]}>{docStatusLabel(doc.docType, doc.status)}</Badge>
         </div>
         <DocumentActions
           doc={{
@@ -141,7 +141,8 @@ export default async function AccountingDocumentPage({
             {doc.dueDate && <p>ครบกำหนด {fmtBangkokDate(doc.dueDate)}</p>}
             {doc.paidAt && (
               <p>
-                ชำระเมื่อ {fmtBangkokDate(doc.paidAt)}
+                {doc.docType === "QUOTATION" ? "ตอบรับเมื่อ" : "ชำระเมื่อ"}{" "}
+                {fmtBangkokDate(doc.paidAt)}
                 {doc.paymentMethod ? ` (${doc.paymentMethod})` : ""}
               </p>
             )}

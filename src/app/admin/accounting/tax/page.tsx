@@ -165,6 +165,12 @@ export default async function TaxReportPage({
               เดือนถัดไป →
             </Link>
           )}
+          <a
+            href={`/api/admin/export/tax?m=${ym}`}
+            className="rounded-md border px-2.5 py-1.5 hover:bg-accent"
+          >
+            Export CSV
+          </a>
         </div>
       </div>
 

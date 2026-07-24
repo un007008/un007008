@@ -98,11 +98,25 @@ export function DocumentActions({ doc }: { doc: DocInfo }) {
             </Button>
           </>
         )}
-        {doc.status === "AWAITING_PAYMENT" && (
-          <Button size="sm" onClick={() => setPayOpen((o) => !o)} disabled={busy}>
-            บันทึกการชำระ
-          </Button>
-        )}
+        {doc.status === "AWAITING_PAYMENT" &&
+          (doc.docType === "QUOTATION" ? (
+            <Button
+              size="sm"
+              onClick={() =>
+                void act(
+                  { action: "markPaid" },
+                  `บันทึกว่าลูกค้าตอบรับใบเสนอราคา ${doc.docNumber}?`
+                )
+              }
+              disabled={busy}
+            >
+              ลูกค้าตอบรับ
+            </Button>
+          ) : (
+            <Button size="sm" onClick={() => setPayOpen((o) => !o)} disabled={busy}>
+              บันทึกการชำระ
+            </Button>
+          ))}
         {doc.status !== "VOID" && doc.status !== "DRAFT" && (
           <Button
             size="sm"
