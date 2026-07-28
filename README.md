@@ -32,6 +32,7 @@ npm run dev                 # http://localhost:3000
 | `LINE_STAFF_GROUP_ID` | — | กลุ่ม LINE ทีมงาน รับแจ้งเตือนอัตโนมัติ |
 | `R2_ACCOUNT_ID` `R2_ACCESS_KEY_ID` `R2_SECRET_ACCESS_KEY` `R2_BUCKET_NAME` `R2_PUBLIC_URL` | — | เก็บรูป/เอกสารบน Cloudflare R2 (ไม่ตั้ง = เก็บในเครื่องที่ `public/uploads`) |
 | `NEXT_PUBLIC_LINE_OA_URL` `NEXT_PUBLIC_CONTACT_PHONE` | — | ปุ่มแชท LINE / โทร บนเว็บ public |
+| `SHEET_IMPORT_URL` | — | URL Google Sheet รายการทรัพย์ (แชร์แบบ Anyone with link) — ระบบดึงแถวใหม่เข้าทุกคืนตี 3 เป็นสถานะซ่อน รอรีวิวใน admin (คอลัมน์ตาม `content/properties.example.csv`) |
 
 ## Deploy ขึ้น Railway
 

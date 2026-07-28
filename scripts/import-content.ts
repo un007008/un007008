@@ -17,19 +17,17 @@
  * the admin UI or pass --activate / --publish. Re-running skips rows that
  * already exist (same question / refCode).
  *
- * CSV columns (see content/properties.example.csv):
- *   refCode,listingType,propertyType,titleTh,descriptionTh,priceSale,
- *   priceRent,bedrooms,bathrooms,areaSqm,floor,projectName,district,
- *   btsMrt,lat,lng,featured
+ * Tip: set SHEET_IMPORT_URL in the environment and the nightly automation
+ * imports new sheet rows automatically — this script is for one-off runs.
  */
 import { readFileSync } from "fs";
-import { PrismaClient } from "@prisma/client";
-import { z } from "zod";
 
-import { slugify } from "../src/lib/slug";
-import { aiProvider, structuredCompletion } from "../src/lib/ai/provider";
-
-const prisma = new PrismaClient();
+import { prisma } from "../src/lib/db";
+import {
+  fetchCsvSource,
+  importProperties,
+  parseCsv,
+} from "../src/lib/content-import";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(`--${name}`);
@@ -38,58 +36,10 @@ const opt = (name: string) => {
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : null;
 };
 
-/** Read a local file or fetch a URL; Google Sheets URLs are rewritten to CSV export. */
 async function readSource(src: string): Promise<string> {
-  if (!/^https?:\/\//.test(src)) return readFileSync(src, "utf8");
-  let url = src;
-  const sheet = src.match(/docs\.google\.com\/spreadsheets\/d\/([\w-]+)/);
-  if (sheet && !src.includes("format=csv")) {
-    const gid = src.match(/[?#&]gid=(\d+)/)?.[1] ?? "0";
-    url = `https://docs.google.com/spreadsheets/d/${sheet[1]}/export?format=csv&gid=${gid}`;
-  }
-  const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok) {
-    throw new Error(
-      `ดึงข้อมูลไม่ได้ (HTTP ${res.status}) — เช็คว่าแชร์ชีตเป็น "Anyone with the link" แล้ว: ${url}`
-    );
-  }
-  const text = await res.text();
-  if (text.trimStart().startsWith("<")) {
-    throw new Error('ได้ HTML แทน CSV — ชีตยังไม่ได้แชร์แบบ "Anyone with the link"');
-  }
-  return text;
+  return /^https?:\/\//.test(src) ? fetchCsvSource(src) : readFileSync(src, "utf8");
 }
 
-// ---------- tiny CSV parser (handles quoted fields with commas/newlines) ----------
-function parseCsv(text: string): Record<string, string>[] {
-  const rows: string[][] = [];
-  let row: string[] = [], cell = "", inQuotes = false;
-  const src = text.replace(/^﻿/, "");
-  for (let i = 0; i < src.length; i++) {
-    const c = src[i];
-    if (inQuotes) {
-      if (c === '"' && src[i + 1] === '"') { cell += '"'; i++; }
-      else if (c === '"') inQuotes = false;
-      else cell += c;
-    } else if (c === '"') inQuotes = true;
-    else if (c === ",") { row.push(cell); cell = ""; }
-    else if (c === "\n" || c === "\r") {
-      if (c === "\r" && src[i + 1] === "\n") i++;
-      row.push(cell); cell = "";
-      if (row.some((v) => v !== "")) rows.push(row);
-      row = [];
-    } else cell += c;
-  }
-  row.push(cell);
-  if (row.some((v) => v !== "")) rows.push(row);
-
-  const [header, ...body] = rows;
-  return body.map((r) =>
-    Object.fromEntries(header.map((h, i) => [h.trim(), (r[i] ?? "").trim()]))
-  );
-}
-
-// ---------- KB import ----------
 async function importKb(file: string, activate: boolean) {
   const items = JSON.parse(await readSource(file)) as {
     question: string; answer: string; category?: string;
@@ -116,92 +66,26 @@ async function importKb(file: string, activate: boolean) {
   );
 }
 
-// ---------- property import ----------
-const LISTING = ["SALE", "RENT", "SALE_AND_RENT"];
-const PTYPE = ["CONDO", "HOUSE", "TOWNHOUSE", "COMMERCIAL", "LAND"];
-
-const TranslationSchema = z.object({
-  en: z.string().describe("natural English translation"),
-  zh: z.string().describe("natural Simplified Chinese translation"),
-});
-
-async function translatePair(th: string): Promise<{ en: string; zh: string }> {
-  if (!th.trim() || !aiProvider()) return { en: "", zh: "" };
-  const result = await structuredCompletion({
-    schema: TranslationSchema,
-    maxTokens: 2048,
-    system:
-      "Translate this Thai real-estate listing text into English and Simplified Chinese. Keep the marketing tone, do not add information.",
-    user: th,
-  });
-  return result ?? { en: "", zh: "" };
-}
-
-async function importProperties(file: string, publish: boolean, translate: boolean) {
-  const rows = parseCsv(await readSource(file));
-  let created = 0, skipped = 0, failed = 0;
-  for (const r of rows) {
-    const refCode = r.refCode?.trim();
-    if (!refCode) { failed++; console.warn("  ! row without refCode skipped"); continue; }
-    if (await prisma.property.findUnique({ where: { refCode } })) {
-      skipped++; continue;
-    }
-    if (!LISTING.includes(r.listingType) || !PTYPE.includes(r.propertyType)) {
-      failed++; console.warn(`  ! ${refCode}: listingType/propertyType ไม่ถูกต้อง`); continue;
-    }
-    if (!r.titleTh) { failed++; console.warn(`  ! ${refCode}: ไม่มี titleTh`); continue; }
-
-    const num = (v: string) => (v && !isNaN(Number(v)) ? Number(v) : null);
-    const title = { th: r.titleTh, ...(translate ? await translatePair(r.titleTh) : { en: "", zh: "" }) };
-    const description = {
-      th: r.descriptionTh ?? "",
-      ...(translate && r.descriptionTh ? await translatePair(r.descriptionTh) : { en: "", zh: "" }),
-    };
-    const baseSlug = slugify(title.en || r.titleTh) || refCode.toLowerCase();
-    const slug = (await prisma.property.findUnique({ where: { slug: baseSlug } }))
-      ? `${baseSlug}-${refCode.toLowerCase()}`
-      : baseSlug;
-
-    await prisma.property.create({
-      data: {
-        refCode,
-        status: publish ? "AVAILABLE" : "HIDDEN",
-        listingType: r.listingType as never,
-        propertyType: r.propertyType as never,
-        title,
-        description,
-        priceSale: num(r.priceSale),
-        priceRent: num(r.priceRent),
-        bedrooms: num(r.bedrooms),
-        bathrooms: num(r.bathrooms),
-        areaSqm: num(r.areaSqm),
-        floor: num(r.floor),
-        projectName: r.projectName || null,
-        district: r.district || null,
-        btsMrt: r.btsMrt || null,
-        lat: num(r.lat),
-        lng: num(r.lng),
-        featured: r.featured?.toLowerCase() === "true",
-        slug,
-      },
-    });
-    created++;
-    console.log(`  + ${refCode} (${slug})`);
-  }
-  console.log(
-    `Properties: created ${created} (${publish ? "AVAILABLE" : "HIDDEN — เปิดใน /admin/properties หลังรีวิว/ใส่รูป"}), skipped ${skipped}, failed ${failed}`
-  );
-}
-
 async function main() {
   const kbFile = opt("kb");
   const propFile = opt("properties");
   if (!kbFile && !propFile) {
-    console.log("ระบุ --kb <file.json> และ/หรือ --properties <file.csv> (ดูหัวไฟล์นี้)");
+    console.log("ระบุ --kb <file.json|url> และ/หรือ --properties <file.csv|url> (ดูหัวไฟล์นี้)");
     process.exit(1);
   }
   if (kbFile) await importKb(kbFile, flag("activate"));
-  if (propFile) await importProperties(propFile, flag("publish"), flag("translate"));
+  if (propFile) {
+    const rows = parseCsv(await readSource(propFile));
+    const r = await importProperties(rows, {
+      publish: flag("publish"),
+      translate: flag("translate"),
+    });
+    for (const ref of r.created) console.log(`  + ${ref}`);
+    for (const f of r.failed) console.log(`  ! ${f.refCode}: ${f.reason}`);
+    console.log(
+      `Properties: created ${r.created.length} (${flag("publish") ? "AVAILABLE" : "HIDDEN — เปิดใน /admin/properties หลังรีวิว/ใส่รูป"}), skipped ${r.skipped}, failed ${r.failed.length}`
+    );
+  }
   await prisma.$disconnect();
 }
 

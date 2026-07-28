@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { aiProvider, structuredCompletion } from "@/lib/ai/provider";
+import { fetchCsvSource, importProperties, parseCsv } from "@/lib/content-import";
 import { bangkokDayKey, fmtBangkokDate, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { lineClient } from "@/lib/line/client";
@@ -209,13 +210,45 @@ export async function nightlySummary() {
   }
 }
 
+/**
+ * Nightly Google Sheet import: pull new property rows from SHEET_IMPORT_URL
+ * (link-shared sheet, columns per content/properties.example.csv). New rows
+ * are created HIDDEN for review; existing refCodes are skipped, so the sheet
+ * is an intake channel only — the admin stays the source of truth.
+ */
+export async function sheetImport() {
+  const url = process.env.SHEET_IMPORT_URL;
+  if (!url) return { skipped: "no SHEET_IMPORT_URL" };
+  try {
+    const rows = parseCsv(await fetchCsvSource(url));
+    const result = await importProperties(rows, {
+      publish: false,
+      translate: !!aiProvider(),
+    });
+    if (result.created.length > 0) {
+      await notifyStaff(
+        `🏠 ทรัพย์ใหม่จาก Google Sheet ${result.created.length} รายการ: ${result.created.join(", ")}\n` +
+          `รอรีวิว + ใส่รูป + กดเปิดใน /admin/properties`
+      );
+    }
+    if (result.failed.length > 0) {
+      console.warn("[automation] sheet rows failed:", result.failed);
+    }
+    return result;
+  } catch (error) {
+    console.error("[automation] sheet import failed:", error);
+    return { skipped: "error" };
+  }
+}
+
 /** Run everything once (used by cron and the manual trigger endpoint). */
 export async function runAllJobs() {
-  const [contracts, staleLeads, overdueInvoices, summary] = await Promise.all([
+  const [contracts, staleLeads, overdueInvoices, summary, sheet] = await Promise.all([
     checkExpiringContracts(),
     checkStaleLeads(),
     checkOverdueInvoices(),
     nightlySummary(),
+    sheetImport(),
   ]);
-  return { contracts, staleLeads, overdueInvoices, summary };
+  return { contracts, staleLeads, overdueInvoices, summary, sheet };
 }

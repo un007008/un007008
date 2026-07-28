@@ -68,6 +68,7 @@ if (!env.NEXT_PUBLIC_LINE_OA_URL) warn("NEXT_PUBLIC_LINE_OA_URL ยังไม�
 else ok("NEXT_PUBLIC_LINE_OA_URL");
 if (!env.NEXT_PUBLIC_CONTACT_PHONE) warn("NEXT_PUBLIC_CONTACT_PHONE ยังไม่ตั้ง — ปุ่มโทรบนเว็บไม่ขึ้น");
 else ok("NEXT_PUBLIC_CONTACT_PHONE");
+if (env.SHEET_IMPORT_URL) ok("SHEET_IMPORT_URL (auto-import ทรัพย์จากชีตทุกคืน)");
 
 console.log(`\n== สรุป: ${errors} ปัญหา, ${warnings} คำเตือน ==`);
 if (errors > 0) {
