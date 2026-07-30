@@ -10,6 +10,9 @@ const nextConfig = {
       { source: "/properties/:slug", destination: "/th/properties/:slug", permanent: false },
       { source: "/blog", destination: "/th/blog", permanent: false },
       { source: "/blog/:slug", destination: "/th/blog/:slug", permanent: false },
+      // short entry point for the accounting team
+      { source: "/accounting", destination: "/admin/accounting", permanent: false },
+      { source: "/accounting/:path*", destination: "/admin/accounting/:path*", permanent: false },
     ];
   },
 };
