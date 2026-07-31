@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ const CONTACT_TYPES = ["CUSTOMER", "VENDOR", "BOTH"] as const;
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const existing = await prisma.accContact.findUnique({ where: { id: params.id } });
   if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const docCount = await prisma.accDocument.count({ where: { contactId: params.id } });
   if (docCount > 0) {

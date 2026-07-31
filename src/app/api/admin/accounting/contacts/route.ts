@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ const CONTACT_TYPES = ["CUSTOMER", "VENDOR", "BOTH"] as const;
 export async function GET() {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const contacts = await prisma.accContact.findMany({
     orderBy: { name: "asc" },
@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json()) as {
     name?: string;

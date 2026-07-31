@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { DOC_TYPE_PREFIX } from "@/lib/accounting";
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { bangkokDayKey } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const doc = await prisma.accDocument.findUnique({
     where: { id: params.id },

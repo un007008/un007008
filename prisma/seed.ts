@@ -222,6 +222,19 @@ async function main() {
     await prisma.knowledgeEntry.createMany({ data: knowledge });
   }
 
+  // ----- Accountant user (dev only) -----
+  const accountantHash = await bcrypt.hash("account1234", 10);
+  await prisma.user.upsert({
+    where: { email: "account@bpp.local" },
+    update: {},
+    create: {
+      email: "account@bpp.local",
+      password: accountantHash,
+      name: "ฝ่ายบัญชี",
+      role: "ACCOUNTANT",
+    },
+  });
+
   // ----- Accounting sample data (dev only) -----
   const accCount = await prisma.accContact.count();
   if (accCount === 0) {

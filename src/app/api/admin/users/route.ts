@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const ROLES: Role[] = ["ADMIN", "SALES", "CR"];
+const ROLES: Role[] = ["ADMIN", "SALES", "CR", "ACCOUNTANT"];
 
 /** Create a staff user (ADMIN only). */
 export async function POST(req: NextRequest) {

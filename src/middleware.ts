@@ -4,9 +4,22 @@ import { NextResponse, type NextFetchEvent } from "next/server";
 // Protect all /admin routes: any signed-in role may enter the admin shell.
 // Per-section role checks (e.g. ADMIN-only settings) are enforced server-side
 // with requireRole() in each page/route.
-const adminAuth = withAuth({
-  pages: { signIn: "/login" },
-});
+const adminAuth = withAuth(
+  function restrictByRole(req: NextRequestWithAuth) {
+    // ACCOUNTANT is scoped to the accounting module (+ own account page)
+    const role = req.nextauth.token?.role as string | undefined;
+    const p = req.nextUrl.pathname;
+    if (
+      role === "ACCOUNTANT" &&
+      !p.startsWith("/admin/accounting") &&
+      !p.startsWith("/admin/account")
+    ) {
+      return NextResponse.redirect(new URL("/admin/accounting", req.url));
+    }
+    return NextResponse.next();
+  },
+  { pages: { signIn: "/login" } }
+);
 
 export default function middleware(req: NextRequestWithAuth, event: NextFetchEvent) {
   // Dedicated accounting entry domain: when ACCOUNTING_DOMAIN is set and the

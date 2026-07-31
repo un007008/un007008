@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { getCompanyProfile, type CompanyProfile } from "@/lib/company";
 import { prisma } from "@/lib/db";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   return NextResponse.json(await getCompanyProfile());
 }
@@ -17,7 +17,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json()) as Partial<CompanyProfile>;
   const data: CompanyProfile = {
