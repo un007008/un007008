@@ -13,6 +13,7 @@ enum Role {
   ADMIN
   SALES
   CR
+  ACCOUNTANT // เห็นเฉพาะโมดูลบัญชี
 }
 
 enum PropertyStatus {

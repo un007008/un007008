@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { calcTotals, DOC_TYPE_PREFIX, PAYMENT_METHODS } from "@/lib/accounting";
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { bangkokDayKey, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const doc = await prisma.accDocument.findUnique({
     where: { id: params.id },
@@ -25,7 +25,7 @@ type ItemBody = { description?: string; quantity?: number; unitPrice?: number };
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const doc = await prisma.accDocument.findUnique({
     where: { id: params.id },
@@ -229,7 +229,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const doc = await prisma.accDocument.findUnique({ where: { id: params.id } });
   if (!doc) return NextResponse.json({ error: "not found" }, { status: 404 });

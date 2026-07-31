@@ -8,6 +8,7 @@ const ROLE_LABEL: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
   SALES: "ฝ่ายขาย",
   CR: "ลูกค้าสัมพันธ์",
+  ACCOUNTANT: "บัญชี/การเงิน",
 };
 
 export default async function AdminLayout({
@@ -17,6 +18,10 @@ export default async function AdminLayout({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/admin");
+
+  // ACCOUNTANT sees only the accounting module (middleware enforces access;
+  // this just keeps the nav clean)
+  const accountingOnly = session.user.role === "ACCOUNTANT";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -36,6 +41,16 @@ export default async function AdminLayout({
           </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 text-sm">
+          {accountingOnly && (
+            <Link
+              href="/admin/accounting"
+              className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+            >
+              บัญชี
+            </Link>
+          )}
+          {!accountingOnly && (
+          <>
           <Link
             href="/admin"
             className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
@@ -113,6 +128,8 @@ export default async function AdminLayout({
                 ผู้ใช้
               </Link>
             </>
+          )}
+          </>
           )}
         </nav>
       </header>

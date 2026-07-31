@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { storeFile } from "@/lib/media/storage";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const doc = await prisma.accDocument.findUnique({ where: { id: params.id } });
   if (!doc) return NextResponse.json({ error: "not found" }, { status: 404 });

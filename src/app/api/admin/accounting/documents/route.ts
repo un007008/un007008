@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AccDocStatus, AccDocType, Prisma } from "@prisma/client";
 
 import { calcTotals, DOC_TYPE_PREFIX } from "@/lib/accounting";
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { bangkokDayKey, parseAsBangkok } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 
@@ -21,7 +21,7 @@ const STATUSES = ["DRAFT", "AWAITING_PAYMENT", "PAID", "VOID"] as const;
 export async function GET(req: NextRequest) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const sp = req.nextUrl.searchParams;
   const where: Prisma.AccDocumentWhereInput = {};
@@ -51,7 +51,7 @@ type ItemBody = { description?: string; quantity?: number; unitPrice?: number };
 export async function POST(req: NextRequest) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAccountingRole(session.user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json()) as {
     docType?: string;

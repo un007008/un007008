@@ -9,7 +9,8 @@ export default async function AccountingLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (session?.user.role !== "ADMIN") redirect("/admin");
+  const role = session?.user.role;
+  if (role !== "ADMIN" && role !== "ACCOUNTANT") redirect("/admin");
 
   return (
     <div className="mx-auto max-w-5xl space-y-3">

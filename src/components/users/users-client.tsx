@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type User = { id: string; name: string; role: "ADMIN" | "SALES" | "CR" };
+type User = { id: string; name: string; role: "ADMIN" | "SALES" | "CR" | "ACCOUNTANT" };
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
   SALES: "ฝ่ายขาย",
   CR: "ลูกค้าสัมพันธ์",
+  ACCOUNTANT: "บัญชี/การเงิน",
 };
 
 const EMPTY = { email: "", name: "", password: "", role: "SALES" };

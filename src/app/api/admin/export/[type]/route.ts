@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { docStatusLabel, DOC_TYPE_LABEL, incomeSign } from "@/lib/accounting";
-import { apiSession } from "@/lib/api-auth";
+import { apiSession, isAccountingRole } from "@/lib/api-auth";
 import { bangkokDayKey } from "@/lib/datetime";
 import { prisma } from "@/lib/db";
 import { STAGE_LABEL } from "@/lib/lead-labels";
@@ -27,7 +27,12 @@ export async function GET(
 ) {
   const session = await apiSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") {
+  // accounting exports are open to ACCOUNTANT; CRM exports stay ADMIN-only
+  const accountingExport = params.type === "accounting" || params.type === "tax";
+  const allowed = accountingExport
+    ? isAccountingRole(session.user.role)
+    : session.user.role === "ADMIN";
+  if (!allowed) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
